@@ -1,0 +1,17 @@
+body {
+    font-family: sans-serif;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+#glCanvas {
+    position: static;
+    width: 100vw;
+    height: 100vh;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    image-rendering: optimizeSpeed;
+    transform: scaleY(-1);
+}
