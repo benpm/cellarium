@@ -9,10 +9,12 @@ var shaderProgram, uniforms, aVertexPosition, vertexBuffer, texB, texA, ruleTex,
 const blending = gl.NEAREST;
 const edgeBehavior = gl.REPEAT;
 const parameters = {
-    clear: () => {restart(null, false);},
+    clear: clear,
+    step: step,
     newRule: setRule,
     penSize: 50.0,
     pause: false,
+    scale: 2,
     preset: "gol"
 };
 const presets = {
@@ -90,6 +92,7 @@ function setRule(rule) {
         ruleString += r + ",";
     }
     console.log(`rule: [${ruleString}]`);
+    $("#info").text(`rule: [${ruleString}]`);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, 18, 1, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, new Uint8Array(rule));
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -101,7 +104,11 @@ function webGlSetup() {
     //Render textures and framebuffers
     texA = texA || gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texA);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, canvas.width, canvas.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 
+        canvas.width,
+        canvas.height,
+        0, gl.RGBA, gl.UNSIGNED_BYTE, null
+    );
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, edgeBehavior);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, edgeBehavior);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, blending);
@@ -110,7 +117,11 @@ function webGlSetup() {
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texA, 0);
     texB = texB || gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texB);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, canvas.width, canvas.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 
+        canvas.width,
+        canvas.height,
+        0, gl.RGBA, gl.UNSIGNED_BYTE, null
+    );
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, edgeBehavior);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, edgeBehavior);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, blending);
@@ -118,41 +129,43 @@ function webGlSetup() {
     gl.bindFramebuffer(gl.FRAMEBUFFER, fbB);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texB, 0);
 
-    //Rule texture
-    setRule(presets[parameters.preset]);
+    //Build shader program
+    if (!shaderProgram) {
+        const shaderSet = [
+            {type: gl.FRAGMENT_SHADER, name: "frag"},
+            {type: gl.VERTEX_SHADER, name: "vertex"}
+        ];
+        shaderProgram = buildShaderProgram(shaderSet);
+    
+        //Create vertices for quad
+        var vertexArray = new Float32Array([
+            -1.0, 1.0, 1.0, 1.0, 1.0, -1.0,
+            -1.0, 1.0, 1.0, -1.0, -1.0, -1.0
+        ]);
+        vertexBuffer = vertexBuffer || gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, vertexArray, gl.STATIC_DRAW);
+    
+        //Uniforms
+        uniforms = {
+            time: {loc: gl.getUniformLocation(shaderProgram, "uTime"), val: 0},
+            width: {loc: gl.getUniformLocation(shaderProgram, "uWidth")},
+            height: {loc: gl.getUniformLocation(shaderProgram, "uHeight")},
+            sampler: {loc: gl.getUniformLocation(shaderProgram, "uSampler")},
+            rule: {loc: gl.getUniformLocation(shaderProgram, "uRule")},
+            mouse: {loc: gl.getUniformLocation(shaderProgram, "uMouse"), val: [0, 0, -1, 50]}
+        };
+    
+        //Attributes
+        aVertexPosition = gl.getAttribLocation(shaderProgram, "aVertexPosition");
+        gl.activeTexture(gl.TEXTURE0);
+        gl.vertexAttribPointer(aVertexPosition, 2, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(aVertexPosition);
+        gl.useProgram(shaderProgram);
 
-    //Shaders
-    const shaderSet = [
-        {type: gl.FRAGMENT_SHADER, name: "frag"},
-        {type: gl.VERTEX_SHADER, name: "vertex"}
-    ];
-    shaderProgram = shaderProgram || buildShaderProgram(shaderSet);
-
-    //Create vertices for quad
-    var vertexArray = vertexArray || new Float32Array([
-        -1.0, 1.0, 1.0, 1.0, 1.0, -1.0,
-        -1.0, 1.0, 1.0, -1.0, -1.0, -1.0
-    ]);
-    vertexBuffer = vertexBuffer || gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, vertexArray, gl.STATIC_DRAW);
-
-    //Uniforms
-    uniforms = {
-        time: {loc: gl.getUniformLocation(shaderProgram, "uTime"), val: 0},
-        width: {loc: gl.getUniformLocation(shaderProgram, "uWidth")},
-        height: {loc: gl.getUniformLocation(shaderProgram, "uHeight")},
-        sampler: {loc: gl.getUniformLocation(shaderProgram, "uSampler")},
-        rule: {loc: gl.getUniformLocation(shaderProgram, "uRule")},
-        mouse: {loc: gl.getUniformLocation(shaderProgram, "uMouse"), val: [0, 0, -1, 50]}
-    };
-
-    //Attributes
-    aVertexPosition = gl.getAttribLocation(shaderProgram, "aVertexPosition");
-    gl.activeTexture(gl.TEXTURE0);
-    gl.vertexAttribPointer(aVertexPosition, 2, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(aVertexPosition);
-    gl.useProgram(shaderProgram);
+        //Rule texture
+        setRule(presets[parameters.preset]);
+    }
 }
 
 //Main function
@@ -223,7 +236,8 @@ function buildShaderProgram(shaderInfo) {
 }
 
 //Restart
-function restart(e, doFlip) {
+function clear() {
+    flip = false;
     gl.bindFramebuffer(gl.FRAMEBUFFER, fbA);
     gl.clearColor(0, 0, 0, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT);
@@ -234,9 +248,17 @@ function restart(e, doFlip) {
 
 //Resize
 function resize(e) {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    clear();
+    canvas.width = window.innerWidth / parameters.scale;
+    canvas.height = window.innerHeight / parameters.scale;
     webGlSetup();
+}
+
+//Single step
+function step() {
+    parameters.pause = true;
+    animateScene();
+    animateScene();
 }
 
 //GUI
@@ -244,14 +266,18 @@ gui = new dat.GUI();
 gui.add(parameters, "penSize", 1.0, 200.0)
     .onChange(onPenSize);
 gui.add(parameters, "pause")
+    .listen()
     .onChange(() => {if (!parameters.pause) animateScene();});
+gui.add(parameters, "step");
 gui.add(parameters, "clear");
 gui.add(parameters, "newRule").name("new rule");
 gui.add(parameters, "preset", Object.keys(presets))
     .onChange(() => setRule(presets[parameters.preset]));
+gui.add(parameters, "scale", 1, 8)
+    .onChange(resize).step(1);
 
 //Load resources
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+canvas.width = window.innerWidth / parameters.scale;
+canvas.height = window.innerHeight / parameters.scale;
 $.get("vertex.glsl", mapResource("vertex"));
 $.get("frag.glsl", mapResource("frag"));

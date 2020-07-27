@@ -15,3 +15,14 @@ body {
     image-rendering: optimizeSpeed;
     transform: scaleY(-1);
 }
+
+#info {
+    position: absolute;
+    left: 0px;
+    bottom: 0px;
+    background: black;
+    color: white;
+    font-family: Consolas, monospace;
+    padding: 4px;
+    font-size: 12px;
+}
