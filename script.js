@@ -10,18 +10,20 @@ const blending = gl.NEAREST;
 const edgeBehavior = gl.REPEAT;
 const parameters = {
     clear: () => {restart(null, false);},
-    setRule: setRule,
+    newRule: setRule,
     penSize: 50.0,
-    pause: false
+    pause: false,
+    preset: "gol"
 };
-const rule_GOL = [
-    0, 0, 0, 1, 0, 0, 0, 0, 0,
-    0, 0, 1, 1, 0, 0, 0, 0, 0
-];
-const rule_tunnel = [
-    0,0,0,1,0,1,0,0,1,
-    1,0,0,0,1,1,1,1,0
-];
+const presets = {
+    gol: [0, 0, 0, 1, 0, 0, 0, 0, 0,
+          0, 0, 1, 1, 0, 0, 0, 0, 0],
+    worms: [0,1,0,0,0,1,0,1,1,0,0,0,0,1,1,1,1,1],
+    maze: [1,1,0,1,0,0,0,0,1,1,0,1,1,1,0,1,1,0],
+    boxes: [1,1,0,1,0,0,0,1,1,0,1,1,1,0,1,0,0,1],
+    hilbert: [0,1,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1],
+    snakes: [0,1,1,1,1,1,1,1,1,1,1,0,0,1,1,1,0,0,]
+};
 
 function mouseHandler(e) {
     uniforms.mouse.val[0] = (e.pageX / window.innerWidth);
@@ -77,13 +79,17 @@ function setRule(rule) {
     //Rule texture
     ruleTex = ruleTex || gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, ruleTex);
+    let ruleString = "";
     if (!rule) {
         rule = [];
         for (let i = 0; i < 18; i++) {
             rule.push(Math.round(Math.random()));
         }
     }
-    console.log(rule);
+    for (let r of rule) {
+        ruleString += r + ",";
+    }
+    console.log(`rule: [${ruleString}]`);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, 18, 1, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, new Uint8Array(rule));
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -113,14 +119,14 @@ function webGlSetup() {
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texB, 0);
 
     //Rule texture
-    setRule(rule_GOL);
+    setRule(presets[parameters.preset]);
 
     //Shaders
     const shaderSet = [
         {type: gl.FRAGMENT_SHADER, name: "frag"},
         {type: gl.VERTEX_SHADER, name: "vertex"}
     ];
-    shaderProgram = buildShaderProgram(shaderSet);
+    shaderProgram = shaderProgram || buildShaderProgram(shaderSet);
 
     //Create vertices for quad
     var vertexArray = vertexArray || new Float32Array([
@@ -153,7 +159,7 @@ function webGlSetup() {
 function main() {
     //Check if WebGL2 is available
     if (gl == null) {
-        console.error("Unable to initialize WebGL 2 context");
+        alert("Unable to initialize WebGL 2 context");
         return;
     }
 
@@ -163,6 +169,7 @@ function main() {
     $(canvas).on("mousemove", mouseHandler);
     $(canvas).on("mousedown", clickOn);
     $(canvas).on("mouseup", clickOff);
+    $(window).on("resize", resize);
 
     animateScene();
 }
@@ -225,14 +232,23 @@ function restart(e, doFlip) {
     gl.clear(gl.COLOR_BUFFER_BIT);
 }
 
+//Resize
+function resize(e) {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    webGlSetup();
+}
+
 //GUI
 gui = new dat.GUI();
-let controller = gui.add(parameters, "penSize", 1.0, 200.0);
-controller.onChange(onPenSize);
-controller = gui.add(parameters, "clear");
-controller = gui.add(parameters, "pause");
-controller.onChange(() => {if (!parameters.pause) animateScene();});
-controller = gui.add(parameters, "setRule");
+gui.add(parameters, "penSize", 1.0, 200.0)
+    .onChange(onPenSize);
+gui.add(parameters, "pause")
+    .onChange(() => {if (!parameters.pause) animateScene();});
+gui.add(parameters, "clear");
+gui.add(parameters, "newRule").name("new rule");
+gui.add(parameters, "preset", Object.keys(presets))
+    .onChange(() => setRule(presets[parameters.preset]));
 
 //Load resources
 canvas.width = window.innerWidth;
