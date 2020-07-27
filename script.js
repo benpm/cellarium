@@ -5,18 +5,23 @@ const gl = canvas.getContext("webgl2");
 var resources = {};
 var resourcesRemaining = 0;
 var flip = false;
-var shaderProgram, uniforms, aVertexPosition, vertexBuffer, dataTex, targetTex, fbA, fbB, gui;
-const rules = new Int32Array([
-    0, 0, 0, 1, 0, 0, 0, 0,
-    0, 0, 1, 1, 0, 0, 0, 0
-]);
-const blending = gl.LINEAR;
+var shaderProgram, uniforms, aVertexPosition, vertexBuffer, texB, texA, ruleTex, fbA, fbB, gui;
+const blending = gl.NEAREST;
 const edgeBehavior = gl.REPEAT;
 const parameters = {
     clear: () => {restart(null, false);},
+    setRule: setRule,
     penSize: 50.0,
     pause: false
 };
+const rule_GOL = [
+    0, 0, 0, 1, 0, 0, 0, 0, 0,
+    0, 0, 1, 1, 0, 0, 0, 0, 0
+];
+const rule_tunnel = [
+    0,0,0,1,0,1,0,0,1,
+    1,0,0,0,1,1,1,1,0
+];
 
 function mouseHandler(e) {
     uniforms.mouse.val[0] = (e.pageX / window.innerWidth);
@@ -45,17 +50,21 @@ function animateScene() {
     gl.uniform1f(uniforms.width.loc, canvas.width);
     gl.uniform1f(uniforms.height.loc, canvas.height);
     gl.uniform1i(uniforms.sampler.loc, 0);
+    gl.uniform1i(uniforms.rule.loc, 1);
     gl.uniform4fv(uniforms.mouse.loc, uniforms.mouse.val);
-    gl.uniform1f(uniforms.param1.loc, uniforms.param1.val);
 
     //Render to framebuffer
     gl.bindFramebuffer(gl.FRAMEBUFFER, flip ? fbB : fbA);
-    gl.bindTexture(gl.TEXTURE_2D, flip ? targetTex : dataTex);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, flip ? texA : texB);
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, ruleTex);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
     //Render to screen
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    gl.bindTexture(gl.TEXTURE_2D, targetTex);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, texA);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
     //Flip framebuffers
@@ -63,34 +72,48 @@ function animateScene() {
     if (!parameters.pause) window.requestAnimationFrame(animateScene);
 }
 
+//New rule
+function setRule(rule) {
+    //Rule texture
+    ruleTex = ruleTex || gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, ruleTex);
+    if (!rule) {
+        rule = [];
+        for (let i = 0; i < 18; i++) {
+            rule.push(Math.round(Math.random()));
+        }
+    }
+    console.log(rule);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, 18, 1, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, new Uint8Array(rule));
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, blending);
+}
+
 //Setup for WebGL stuff
 function webGlSetup() {
-    //Initial texture from image
-    dataTex = dataTex || gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, dataTex);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, canvas.width, canvas.height,
-        0, gl.RGBA, gl.UNSIGNED_BYTE, document.getElementById("imgCanvas"));
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, edgeBehavior);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, edgeBehavior);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, blending);
-
-    //First framebuffer
-    fbB = fbB || gl.createFramebuffer();
-    gl.bindFramebuffer(gl.FRAMEBUFFER, fbB);
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, dataTex, 0);
-    
-    //Destination texture
-    targetTex = targetTex || gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, targetTex);
+    //Render textures and framebuffers
+    texA = texA || gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texA);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, canvas.width, canvas.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, edgeBehavior);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, edgeBehavior);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, blending);
-
-    //Second framebuffer
     fbA = fbA || gl.createFramebuffer();
     gl.bindFramebuffer(gl.FRAMEBUFFER, fbA);
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, targetTex, 0);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texA, 0);
+    texB = texB || gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texB);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, canvas.width, canvas.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, edgeBehavior);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, edgeBehavior);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, blending);
+    fbB = fbB || gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbB);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texB, 0);
+
+    //Rule texture
+    setRule(rule_GOL);
 
     //Shaders
     const shaderSet = [
@@ -114,7 +137,7 @@ function webGlSetup() {
         width: {loc: gl.getUniformLocation(shaderProgram, "uWidth")},
         height: {loc: gl.getUniformLocation(shaderProgram, "uHeight")},
         sampler: {loc: gl.getUniformLocation(shaderProgram, "uSampler")},
-        param1: {loc: gl.getUniformLocation(shaderProgram, "uParam1"), val: parameters.param1},
+        rule: {loc: gl.getUniformLocation(shaderProgram, "uRule")},
         mouse: {loc: gl.getUniformLocation(shaderProgram, "uMouse"), val: [0, 0, -1, 50]}
     };
 
@@ -194,10 +217,12 @@ function buildShaderProgram(shaderInfo) {
 
 //Restart
 function restart(e, doFlip) {
-    let wasPaused = parameters.pause;
-    parameters.pause = true;
-    flip != flip;
-    parameters.pause = wasPaused;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbA);
+    gl.clearColor(0, 0, 0, 1.0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbB);
+    gl.clearColor(0, 0, 0, 1.0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
 }
 
 //GUI
@@ -207,6 +232,7 @@ controller.onChange(onPenSize);
 controller = gui.add(parameters, "clear");
 controller = gui.add(parameters, "pause");
 controller.onChange(() => {if (!parameters.pause) animateScene();});
+controller = gui.add(parameters, "setRule");
 
 //Load resources
 canvas.width = window.innerWidth;
