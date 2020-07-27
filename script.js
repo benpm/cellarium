@@ -5,13 +5,14 @@ const gl = canvas.getContext("webgl2");
 var resources = {};
 var resourcesRemaining = 0;
 var flip = false;
-var shaderProgram, uniforms, aVertexPosition, vertexBuffer, texB, texA, ruleTex, fbA, fbB, gui;
+var shaderProgram, uniforms, aVertexPosition, vertexBuffer, texB, texA, ruleTex, fbA, fbB, gui, curRule, touchID;
 const blending = gl.NEAREST;
 const edgeBehavior = gl.REPEAT;
 const parameters = {
     clear: clear,
     step: step,
     newRule: setRule,
+    mutate: mutate,
     penSize: 50.0,
     pause: false,
     scale: 2,
@@ -20,16 +21,20 @@ const parameters = {
 const presets = {
     gol: [0, 0, 0, 1, 0, 0, 0, 0, 0,
           0, 0, 1, 1, 0, 0, 0, 0, 0],
-    worms: [0,1,0,0,0,1,0,1,1,0,0,0,0,1,1,1,1,1],
-    maze: [1,1,0,1,0,0,0,0,1,1,0,1,1,1,0,1,1,0],
-    boxes: [1,1,0,1,0,0,0,1,1,0,1,1,1,0,1,0,0,1],
-    hilbert: [0,1,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1],
-    snakes: [0,1,1,1,1,1,1,1,1,1,1,0,0,1,1,1,0,0,]
+    worms:       [0,1,0,0,0,1,0,1,1,0,0,0,0,1,1,1,1,1],
+    maze:        [1,1,0,1,0,0,0,0,1,1,0,1,1,1,0,1,1,0],
+    boxes:       [1,1,0,1,0,0,0,1,1,0,1,1,1,0,1,0,0,1],
+    hilbert:     [0,1,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1],
+    snakes:      [0,1,1,1,1,1,1,1,1,1,1,0,0,1,1,1,0,0],
+    stars:       [0,0,1,1,0,0,1,1,0,0,0,1,1,0,1,1,1,1],
+    nicetiles:   [1,1,1,0,0,0,0,0,1,0,1,1,1,0,1,0,0,1],
+    tricircuit:  [1,1,1,0,0,0,0,0,1,0,1,1,1,1,1,0,0,1],
+    sierpinski1: [0,1,0,0,0,0,0,0,0,0,1,1,0,1,1,1,1,1]
 };
 
 function mouseHandler(e) {
-    uniforms.mouse.val[0] = (e.pageX / window.innerWidth);
-    uniforms.mouse.val[1] = (e.pageY / window.innerHeight);
+    uniforms.mouse.val[0] = ((Math.floor(e.pageX)) / window.innerWidth);
+    uniforms.mouse.val[1] = ((Math.floor(e.pageY)) / window.innerHeight);
 }
 
 function clickOn(e) {
@@ -91,6 +96,7 @@ function setRule(rule) {
     for (let r of rule) {
         ruleString += r + ",";
     }
+    curRule = rule;
     console.log(`rule: [${ruleString}]`);
     $("#info").text(`rule: [${ruleString}]`);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, 18, 1, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, new Uint8Array(rule));
@@ -184,6 +190,20 @@ function main() {
     $(canvas).on("mouseup", clickOff);
     $(window).on("resize", resize);
 
+    //Mouse emulation with touch
+    $(canvas).on("touchstart", (e) => {
+        touchID = e.originalEvent.touches.item(0).identifier;
+        clickOn({originalEvent: {button: 0}});
+    });
+    $(canvas).on("touchend", (e) => {
+        clickOff();
+    });
+    $(canvas).on("touchmove", (e) => {
+        let touch = e.originalEvent.touches.item(0);
+        mouseHandler({pageX: touch.pageX, pageY: touch.pageY});
+        console.log(e);
+    });
+
     animateScene();
 }
 
@@ -261,6 +281,14 @@ function step() {
     animateScene();
 }
 
+//Mutate current rule
+function mutate() {
+    let mRule = curRule;
+    let i = Math.floor(Math.random() * mRule.length);
+    mRule[i] = mRule[i] == 0 ? 1 : 0;
+    setRule(mRule);
+}
+
 //GUI
 gui = new dat.GUI();
 gui.add(parameters, "penSize", 1.0, 200.0)
@@ -271,10 +299,11 @@ gui.add(parameters, "pause")
 gui.add(parameters, "step");
 gui.add(parameters, "clear");
 gui.add(parameters, "newRule").name("new rule");
-gui.add(parameters, "preset", Object.keys(presets))
-    .onChange(() => setRule(presets[parameters.preset]));
+gui.add(parameters, "mutate");
 gui.add(parameters, "scale", 1, 8)
     .onChange(resize).step(1);
+    gui.add(parameters, "preset", Object.keys(presets))
+        .onChange(() => setRule(presets[parameters.preset]));
 
 //Load resources
 canvas.width = window.innerWidth / parameters.scale;
