@@ -29,7 +29,8 @@ const presets = {
     stars:       [0,0,1,1,0,0,1,1,0,0,0,1,1,0,1,1,1,1],
     nicetiles:   [1,1,1,0,0,0,0,0,1,0,1,1,1,0,1,0,0,1],
     tricircuit:  [1,1,1,0,0,0,0,0,1,0,1,1,1,1,1,0,0,1],
-    sierpinski1: [0,1,0,0,0,0,0,0,0,0,1,1,0,1,1,1,1,1]
+    sierpinski1: [0,1,0,0,0,0,0,0,0,0,1,1,0,1,1,1,1,1],
+    machine:     [0,1,0,0,0,0,0,0,1,1,1,1,1,0,0,0,1,0]
 };
 
 function mouseHandler(e) {
@@ -283,7 +284,7 @@ function step() {
 
 //Mutate current rule
 function mutate() {
-    let mRule = curRule;
+    let mRule = [...curRule];
     let i = Math.floor(Math.random() * mRule.length);
     mRule[i] = mRule[i] == 0 ? 1 : 0;
     setRule(mRule);
