@@ -12,7 +12,34 @@ const parameters = {
     clear: clear,
     step: step,
     newRule: setRule,
+    customRule: () => {setRule(
+        prompt("Input rule string",
+               "0,0,0,1,0,0,0,0,0,0,0,1,1,0,0,0,0,0")
+        .split(",").map(
+            (v) => { return parseInt(v); }
+        )
+    )},
     mutate: mutate,
+    germinate: () => {
+        // Clear with a single spot in the center
+        clear();
+        let data = new Uint8Array(canvas.width * canvas.height * 3);
+        let i = (canvas.width * (canvas.height / 2)) * 3;
+        if (parameters.scale == 1) {
+            i += (canvas.width / 2) * 3;
+        }
+        data[i] = 1;
+        webGlSetup(data)
+    },
+    fillRandom: () => {
+        // Clear with a single spot in the center
+        clear();
+        let data = new Uint8Array(canvas.width * canvas.height * 3);
+        for (let i = 0; i < data.length / 3; i++) {
+            data[i * 3] = Math.round(Math.random());
+        }
+        webGlSetup(data)
+    },
     penSize: 50.0,
     pause: false,
     scale: 2,
@@ -34,7 +61,8 @@ const presets = {
     tearing:     [0,0,0,0,1,1,1,1,1,0,0,0,1,0,1,1,0,1],
     complexmaze: [0,0,0,1,0,0,0,0,0,0,0,1,1,1,1,0,1,0],
     gooeyzebra:  [1,1,1,0,1,1,0,1,1,1,1,1,1,0,0,0,0,0],
-    octofractal: [1,0,0,0,0,1,0,1,1,1,1,1,1,0,0,0,1,0]
+    octofractal: [1,0,0,0,0,1,0,1,1,1,1,1,1,0,0,0,1,0],
+    sierpinski2: [1,1,0,0,0,0,0,0,1,1,0,1,1,1,0,1,1,0]
 };
 
 function mouseHandler(e) {
@@ -88,6 +116,11 @@ function animateScene() {
 
 //New rule
 function setRule(rule) {
+    //Check if rule is valid
+    if (rule && rule.length != 18) {
+        alert("Invalid rule!");
+        return;
+    }
     //Rule texture
     ruleTex = ruleTex || gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, ruleTex);
@@ -111,14 +144,14 @@ function setRule(rule) {
 }
 
 //Setup for WebGL stuff
-function webGlSetup() {
+function webGlSetup(data) {
     //Render textures and framebuffers
     texA = texA || gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texA);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, 
         canvas.width,
         canvas.height,
-        0, gl.RGBA, gl.UNSIGNED_BYTE, null
+        0, gl.RGB, gl.UNSIGNED_BYTE, data || null
     );
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, edgeBehavior);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, edgeBehavior);
@@ -128,10 +161,10 @@ function webGlSetup() {
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texA, 0);
     texB = texB || gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texB);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, 
         canvas.width,
         canvas.height,
-        0, gl.RGBA, gl.UNSIGNED_BYTE, null
+        0, gl.RGB, gl.UNSIGNED_BYTE, data || null
     );
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, edgeBehavior);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, edgeBehavior);
@@ -187,7 +220,7 @@ function main() {
         return;
     }
 
-    webGlSetup();
+    parameters.fillRandom();
 
     //Handlers
     $(canvas).on("mousemove", mouseHandler);
@@ -296,19 +329,24 @@ function mutate() {
 
 //GUI
 gui = new dat.GUI();
+gui.width = 350;
 gui.add(parameters, "penSize", 1.0, 200.0)
-    .onChange(onPenSize);
+    .onChange(onPenSize)
+    .name("pen size");
+gui.add(parameters, "scale", 1, 8)
+    .onChange(resize).step(1);
 gui.add(parameters, "pause")
     .listen()
     .onChange(() => {if (!parameters.pause) animateScene();});
 gui.add(parameters, "step");
+gui.add(parameters, "preset", Object.keys(presets))
+    .onChange(() => setRule(presets[parameters.preset]));
+gui.add(parameters, "newRule").name("random rule");
+gui.add(parameters, "customRule").name("custom rule");
+gui.add(parameters, "mutate").name("mutate rule");
 gui.add(parameters, "clear");
-gui.add(parameters, "newRule").name("new rule");
-gui.add(parameters, "mutate");
-gui.add(parameters, "scale", 1, 8)
-    .onChange(resize).step(1);
-    gui.add(parameters, "preset", Object.keys(presets))
-        .onChange(() => setRule(presets[parameters.preset]));
+gui.add(parameters, "germinate").name("germinate from center");
+gui.add(parameters, "fillRandom").name("fill randomly");
 
 //Load resources
 canvas.width = window.innerWidth / parameters.scale;
