@@ -25,9 +25,6 @@ const parameters = {
         clear();
         let data = new Uint8Array(canvas.width * canvas.height * 3);
         let i = (canvas.width * (canvas.height / 2)) * 3;
-        if (parameters.scale == 1) {
-            i += (canvas.width / 2) * 3;
-        }
         data[i] = 1;
         webGlSetup(data)
     },
