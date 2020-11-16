@@ -26,3 +26,14 @@ body {
     padding: 4px;
     font-size: 12px;
 }
+
+#viewer-window {
+    position: absolute;
+    bottom: 1px;
+    right: 1px;
+    width: 512px;
+    height: 512px;
+    overflow: hidden;
+    background: magenta;
+    border: white 1px solid;
+}

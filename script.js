@@ -2,23 +2,39 @@
 
 const canvas = document.getElementById("glCanvas");
 const gl = canvas.getContext("webgl2");
-var resources = {};
-var resourcesRemaining = 0;
-var flip = false;
-var shaderProgram, uniforms, aVertexPosition, vertexBuffer, texB, texA, ruleTex, fbA, fbB, gui, curRule, touchID;
 const blending = gl.NEAREST;
 const edgeBehavior = gl.REPEAT;
+const viewerCanvas = document.getElementById("glViewer");
+const glViewer = viewerCanvas.getContext("webgl2");
+
+/* Global Variables */
+var resources = {};                         // Map of resource names to resources such as frag / vert shader
+var resourcesRemaining = 0;                 // Number of remaining resources to fetch
+var flip = false;                           // Framebuffer flip
+var simProgram;                             // The GL shader program for simulation (see simulate.glsl)
+var colorProgram;                           // The GL shader program for colormapping (see colormap.glsl)
+var previewProgram;                         // The GL shader program for previewing (see preview.glsl)
+var simUniforms;                            // Fragment shader uniform map for simulation shader
+var colorUniforms;                          // Fragment shader uniform map for colormapping shader
+var previewUniforms;                        // Fragment shader uniform map for colormapping shader
+var previewTex;                             // Texture ID for texture preview
+var texB;                                   // Framebuffer B GL texture ID
+var texA;                                   // Framebuffer A GL texture ID
+var ruleTex;                                // Cellular automata rule GL texture ID
+var binomialTex;                            // Precomputed binomial coefficients GL texture ID
+var colorMapTex;                            // State to color GL texture ID
+var fbA;                                    // Framebuffer A ID
+var fbB;                                    // Framebuffer B ID
+var gui;                                    // datgui object
+var touchID;                                // For identifying touch events
+var ruleData = new Uint8Array(1024 * 1024); // The actual CA rule data
+
+// Simulation parameters for datgui
 const parameters = {
     clear: clear,
     step: step,
-    newRule: setRule,
-    customRule: () => {setRule(
-        prompt("Input rule string",
-               "0,0,0,1,0,0,0,0,0,0,0,1,1,0,0,0,0,0")
-        .split(",").map(
-            (v) => { return parseInt(v); }
-        )
-    )},
+    newRule: () => { setRule(randomRule(2)); },
+    customRule: () => { alert("not implemented"); },
     mutate: mutate,
     germinate: () => {
         // Clear with a single spot in the center
@@ -26,7 +42,7 @@ const parameters = {
         let data = new Uint8Array(canvas.width * canvas.height * 3);
         let i = (canvas.width * (canvas.height / 2)) * 3;
         data[i] = 1;
-        webGlSetup(data)
+        webGlSetup(data);
     },
     fillRandom: () => {
         // Clear with a single spot in the center
@@ -35,114 +51,235 @@ const parameters = {
         for (let i = 0; i < data.length / 3; i++) {
             data[i * 3] = Math.round(Math.random());
         }
-        webGlSetup(data)
+        webGlSetup(data);
     },
     penSize: 50.0,
     pause: false,
     scale: 2,
     preset: "gol"
 };
+// Preset rules
 const presets = {
-    gol: [0, 0, 0, 1, 0, 0, 0, 0, 0,
-          0, 0, 1, 1, 0, 0, 0, 0, 0],
-    worms:       [0,1,0,0,0,1,0,1,1,0,0,0,0,1,1,1,1,1],
-    maze:        [1,1,0,1,0,0,0,0,1,1,0,1,1,1,0,1,1,0],
-    boxes:       [1,1,0,1,0,0,0,1,1,0,1,1,1,0,1,0,0,1],
-    hilbert:     [0,1,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1],
-    snakes:      [0,1,1,1,1,1,1,1,1,1,1,0,0,1,1,1,0,0],
-    stars:       [0,0,1,1,0,0,1,1,0,0,0,1,1,0,1,1,1,1],
-    nicetiles:   [1,1,1,0,0,0,0,0,1,0,1,1,1,0,1,0,0,1],
-    tricircuit:  [1,1,1,0,0,0,0,0,1,0,1,1,1,1,1,0,0,1],
-    sierpinski1: [0,1,0,0,0,0,0,0,0,0,1,1,0,1,1,1,1,1],
-    machine:     [0,1,0,0,0,0,0,0,1,1,1,1,1,0,0,0,1,0],
-    tearing:     [0,0,0,0,1,1,1,1,1,0,0,0,1,0,1,1,0,1],
-    complexmaze: [0,0,0,1,0,0,0,0,0,0,0,1,1,1,1,0,1,0],
-    gooeyzebra:  [1,1,1,0,1,1,0,1,1,1,1,1,1,0,0,0,0,0],
-    octofractal: [1,0,0,0,0,1,0,1,1,1,1,1,1,0,0,0,1,0],
-    sierpinski2: [1,1,0,0,0,0,0,0,1,1,0,1,1,1,0,1,1,0]
+    gol:           [0,0,0,0,0,1,0,0,0, // Converted
+                    0,0,0,0,0,1,1,0,0],
+    worms:         [0,1,0,0,0,1,0,1,1, // NOT Converted
+                    0,0,0,0,1,1,1,1,1],
+    maze:          [1,1,0,1,0,0,0,0,1, // NOT Converted
+                    1,0,1,1,1,0,1,1,0],
+    boxes:         [1,1,0,1,0,0,0,1,1, // NOT Converted
+                    0,1,1,1,0,1,0,0,1],
+    hilbert:       [0,1,0,0,0,0,0,0,0, // NOT Converted
+                    0,1,1,1,1,1,1,1,1],
+    snakes:        [0,1,1,1,1,1,1,1,1, // NOT Converted
+                    1,1,0,0,1,1,1,0,0],
+    stars:         [0,0,1,1,0,0,1,1,0, // NOT Converted
+                    0,0,1,1,0,1,1,1,1],
+    nicetiles:     [1,1,1,0,0,0,0,0,1, // NOT Converted
+                    0,1,1,1,0,1,0,0,1],
+    tricircuit:    [1,1,1,0,0,0,0,0,1, // NOT Converted
+                    0,1,1,1,1,1,0,0,1],
+    sierpinski1:   [0,1,0,0,0,0,0,0,0, // NOT Converted
+                    0,1,1,0,1,1,1,1,1],
+    machine:       [0,1,0,0,0,0,0,0,1, // NOT Converted
+                    1,1,1,1,0,0,0,1,0],
+    tearing:       [0,0,0,0,1,1,1,1,1, // NOT Converted
+                    0,0,0,1,0,1,1,0,1],
+    complexmaze:   [0,0,0,1,0,0,0,0,0, // NOT Converted
+                    0,0,1,1,1,1,0,1,0],
+    gooeyzebra:    [1,1,1,0,1,1,0,1,1, // NOT Converted
+                    1,1,1,1,0,0,0,0,0],
+    octofractal:   [1,0,0,0,0,1,0,1,1, // NOT Converted
+                    1,1,1,1,0,0,0,1,0],
+    sierpinski2:   [1,1,0,0,0,0,0,0,1, // NOT Converted
+                    1,0,1,1,1,0,1,1,0]
 };
+// Mapping from rule length to number of states
+var nStateMap = {};
+// State number to color
+const colorMap = new Uint8Array([
+    /* 0  */ 0, 0, 0,
+    /* 1  */ 255, 255, 255,
+    /* 2  */ 255, 50, 50,
+    /* 3  */ 50, 255, 50,
+    /* 4  */ 50, 50, 255,
+    /* 5  */ 255, 255, 50,
+    /* 6  */ 50, 255, 255,
+    /* 7  */ 255, 50, 255,
+    /* 8  */ 255, 50, 175,
+    /* 9  */ 50, 255, 175,
+    /* 10 */ 175, 50, 255,
+    /* 11 */ 255, 255, 175,
+    /* 12 */ 175, 255, 50,
+    /* 13 */ 50, 175, 255
+]);
 
 function mouseHandler(e) {
-    uniforms.mouse.val[0] = ((Math.floor(e.pageX)) / window.innerWidth);
-    uniforms.mouse.val[1] = ((Math.floor(e.pageY)) / window.innerHeight);
+    simUniforms.mouse.val[0] = ((Math.floor(e.pageX)) / window.innerWidth);
+    simUniforms.mouse.val[1] = ((Math.floor(e.pageY)) / window.innerHeight);
 }
 
 function clickOn(e) {
-    uniforms.mouse.val[2] = e.originalEvent.button;
+    simUniforms.mouse.val[2] = e.originalEvent.button;
 }
 
 function clickOff(e) {
-    uniforms.mouse.val[2] = -1;
+    simUniforms.mouse.val[2] = -1;
 }
 
 function onPenSize() {
-    uniforms.mouse.val[3] = parameters.penSize;
+    simUniforms.mouse.val[3] = parameters.penSize;
 }
 
 //Render to the screen
 function animateScene() {
     gl.viewport(0, 0, canvas.width, canvas.height);
 
-    //Set uniforms
-    uniforms.time.val += 0.01;
-    gl.uniform1f(uniforms.time.loc, uniforms.time.val);
-    gl.uniform1f(uniforms.width.loc, canvas.width);
-    gl.uniform1f(uniforms.height.loc, canvas.height);
-    gl.uniform1i(uniforms.sampler.loc, 0);
-    gl.uniform1i(uniforms.rule.loc, 1);
-    gl.uniform4fv(uniforms.mouse.loc, uniforms.mouse.val);
-
-    //Render to framebuffer
+    /* Simulation */
+    gl.useProgram(simProgram);
+    //Set simUniforms
+    gl.uniform1f(simUniforms.width.loc, canvas.width);
+    gl.uniform1f(simUniforms.height.loc, canvas.height);
+    gl.uniform1i(simUniforms.sampler.loc, 0);
+    gl.uniform1i(simUniforms.rule.loc, 1);
+    gl.uniform1i(simUniforms.binomial.loc, 2);
+    gl.uniform4fv(simUniforms.mouse.loc, simUniforms.mouse.val);
+    gl.uniform1i(simUniforms.states.loc, simUniforms.states.val);
+    gl.uniform1i(simUniforms.subindices.loc, simUniforms.subindices.val);
+    //Simulate and render to framebuffer
     gl.bindFramebuffer(gl.FRAMEBUFFER, flip ? fbB : fbA);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, flip ? texA : texB);
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, ruleTex);
+    gl.activeTexture(gl.TEXTURE2);
+    gl.bindTexture(gl.TEXTURE_2D, binomialTex);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
-    //Render to screen
+    /* Colormapping */
+    gl.useProgram(colorProgram);
+    //Colormap uniforms
+    gl.uniform1i(colorUniforms.sampler.loc, 0);
+    gl.uniform1i(colorUniforms.colormap.loc, 1);
+    //Colormap and render to canvas
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, texA);
+    gl.bindTexture(gl.TEXTURE_2D, flip ? texA : texB);
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, colorMapTex);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+    /* Debug Preview */
+    glViewer.drawArrays(glViewer.TRIANGLES, 0, 6);
 
     //Flip framebuffers
     flip = !flip;
     if (!parameters.pause) window.requestAnimationFrame(animateScene);
 }
 
-//New rule
+//Random rule
+function randomRule(nStates) {
+    let length = maxRuleSubIndex(nStates);
+    let rule = new Uint8Array(length);
+    for (let i = 0; i < length; i++) {
+        rule[i] = Math.floor(Math.random() * nStates);
+    }
+    return rule;
+}
+
+//Set rule
 function setRule(rule) {
     //Check if rule is valid
-    if (rule && rule.length != 18) {
-        alert("Invalid rule!");
+    if (!rule || nStateMap[rule.length] === undefined) {
+        alert("invalid rule!");
         return;
     }
+
     //Rule texture
+    ruleData.set(rule);
     ruleTex = ruleTex || gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, ruleTex);
-    let ruleString = "";
-    if (!rule) {
-        rule = [];
-        for (let i = 0; i < 18; i++) {
-            rule.push(Math.round(Math.random()));
-        }
-    }
-    for (let r of rule) {
-        ruleString += r + ",";
-    }
-    curRule = rule;
-    console.log(`rule: [${ruleString}]`);
-    $("#info").text(`rule: [${ruleString}]`);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, 18, 1, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, new Uint8Array(rule));
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, 1024, 1024, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, ruleData);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, blending);
+
+    let ruleString = "";
+    for (let r of rule) {
+        ruleString += r + ",";
+    }
+    console.info(`rule: [${ruleString}]`);
+    $("#info").text(`rule: [${ruleString}]`);
+}
+
+//Factorial function
+function factorial(m) {
+    let n = 1;
+    for (let i = 2; i <= m; i++) {
+        n *= i;
+    }
+    return n;
+}
+
+//Binomial coefficient function
+function binomial(n, k) {
+    return Math.floor(factorial(n) / (factorial(k) * factorial(n - k)));
+}
+
+//Build precomputed binomial coefficient texture
+function buildBinomial() {
+    console.info("Building binomial coefficient tex...");
+    let data = new Uint8Array(32 * 32 * 4);
+    data.fill(0);
+    for (let n = 0; n < 32; n++) {
+        for (let k = 0; k < 32; k++) {
+            let value = binomial(n, k);
+            let index = (k * 32 + n) * 4;
+            //Pack result into the four RGBA bytes
+            data[index + 0] = value & 0xFF;
+            data[index + 1] = (value >> 8) & 0xFF;
+            data[index + 2] = (value >> 16) & 0xFF;
+            data[index + 3] = (value >> 24) & 0xFF;
+        }
+    }
+    binomialTex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, binomialTex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 32, 32, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, blending);
+
+    previewTex = glViewer.createTexture();
+    glViewer.bindTexture(glViewer.TEXTURE_2D, previewTex);
+    glViewer.texImage2D(glViewer.TEXTURE_2D, 0, glViewer.RGBA, 32, 32, 0, glViewer.RGBA, glViewer.UNSIGNED_BYTE, data);
+    glViewer.texParameteri(glViewer.TEXTURE_2D, glViewer.TEXTURE_WRAP_S, glViewer.CLAMP_TO_EDGE);
+    glViewer.texParameteri(glViewer.TEXTURE_2D, glViewer.TEXTURE_WRAP_T, glViewer.CLAMP_TO_EDGE);
+    glViewer.texParameteri(glViewer.TEXTURE_2D, glViewer.TEXTURE_MIN_FILTER, blending);
+}
+
+//Returns 1D rule subindex given number of states and neighbor count array
+function ruleSubIndex(nStates, neighbors) {
+    let subIndex = 0;
+    let x = nStates;
+    let y = 8;
+    for (let i = 0; i < nStates - 1; i++) {
+        let v = neighbors[i];
+        if (v > 0) {
+            subIndex += binomial(y + x - 1, x - 1) - binomial(y - v + x - 1, x - 1);
+        }
+        x -= 1;
+        y -= cc;
+    }
+    return subIndex;
+}
+
+//Returns the maximum rule subindex for given number of states
+function maxRuleSubIndex(nStates) {
+   return nStates * binomial(nStates + 8 - 1, nStates - 1);
 }
 
 //Setup for WebGL stuff
 function webGlSetup(data) {
-    //Render textures and framebuffers
+    //Texture A
     texA = texA || gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texA);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, 
@@ -153,9 +290,11 @@ function webGlSetup(data) {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, edgeBehavior);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, edgeBehavior);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, blending);
+    //Framebuffer A
     fbA = fbA || gl.createFramebuffer();
     gl.bindFramebuffer(gl.FRAMEBUFFER, fbA);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texA, 0);
+    //Texture B
     texB = texB || gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texB);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, 
@@ -166,57 +305,142 @@ function webGlSetup(data) {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, edgeBehavior);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, edgeBehavior);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, blending);
+    //Framebuffer B
     fbB = fbB || gl.createFramebuffer();
     gl.bindFramebuffer(gl.FRAMEBUFFER, fbB);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texB, 0);
 
-    //Build shader program
-    if (!shaderProgram) {
+    //Build simulator shader program
+    if (!simProgram) {
         const shaderSet = [
-            {type: gl.FRAGMENT_SHADER, name: "frag"},
+            {type: gl.FRAGMENT_SHADER, name: "simulate"},
             {type: gl.VERTEX_SHADER, name: "vertex"}
         ];
-        shaderProgram = buildShaderProgram(shaderSet);
+        simProgram = buildShaderProgram(gl, shaderSet);
+        gl.useProgram(simProgram);
+
+        //Build precomputed binomial coefficient texture
+        buildBinomial();
     
         //Create vertices for quad
-        var vertexArray = new Float32Array([
+        let vertexArray = new Float32Array([
             -1.0, 1.0, 1.0, 1.0, 1.0, -1.0,
             -1.0, 1.0, 1.0, -1.0, -1.0, -1.0
         ]);
-        vertexBuffer = vertexBuffer || gl.createBuffer();
+        let vertexBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, vertexArray, gl.STATIC_DRAW);
     
         //Uniforms
-        uniforms = {
-            time: {loc: gl.getUniformLocation(shaderProgram, "uTime"), val: 0},
-            width: {loc: gl.getUniformLocation(shaderProgram, "uWidth")},
-            height: {loc: gl.getUniformLocation(shaderProgram, "uHeight")},
-            sampler: {loc: gl.getUniformLocation(shaderProgram, "uSampler")},
-            rule: {loc: gl.getUniformLocation(shaderProgram, "uRule")},
-            mouse: {loc: gl.getUniformLocation(shaderProgram, "uMouse"), val: [0, 0, -1, 50]}
+        simUniforms = {
+            width:      {loc: gl.getUniformLocation(simProgram, "uWidth")},
+            height:     {loc: gl.getUniformLocation(simProgram, "uHeight")},
+            sampler:    {loc: gl.getUniformLocation(simProgram, "uSampler")},
+            binomial:   {loc: gl.getUniformLocation(simProgram, "uBinomial")},
+            rule:       {loc: gl.getUniformLocation(simProgram, "uRule")},
+            mouse:      {loc: gl.getUniformLocation(simProgram, "uMouse"), val: [0, 0, -1, 50]},
+            states:     {loc: gl.getUniformLocation(simProgram, "uStates"), val: 2},
+            subindices: {loc: gl.getUniformLocation(simProgram, "uSubIndices"), val: binomial(2 + 8 - 1, 2 - 1)}
         };
     
         //Attributes
-        aVertexPosition = gl.getAttribLocation(shaderProgram, "aVertexPosition");
+        let aVertexPosition = gl.getAttribLocation(simProgram, "aVertexPosition");
         gl.activeTexture(gl.TEXTURE0);
         gl.vertexAttribPointer(aVertexPosition, 2, gl.FLOAT, false, 0, 0);
         gl.enableVertexAttribArray(aVertexPosition);
-        gl.useProgram(shaderProgram);
 
         //Rule texture
         setRule(presets[parameters.preset]);
     }
+
+    // Build colormap shader program
+    if (!colorProgram) {
+        const shaderSet = [
+            {type: gl.FRAGMENT_SHADER, name: "colormap"},
+            {type: gl.VERTEX_SHADER, name: "vertex"}
+        ];
+        colorProgram = buildShaderProgram(gl, shaderSet);
+        gl.useProgram(colorProgram);
+
+        //Color map
+        colorMapTex = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, colorMapTex);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, 14, 1, 0, gl.RGB, gl.UNSIGNED_BYTE, colorMap);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, blending);
+    
+        //Create vertices for quad
+        let vertexArray = new Float32Array([
+            -1.0, 1.0, 1.0, 1.0, 1.0, -1.0,
+            -1.0, 1.0, 1.0, -1.0, -1.0, -1.0
+        ]);
+        let vertexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, vertexArray, gl.STATIC_DRAW);
+    
+        //Uniforms
+        colorUniforms = {
+            sampler:    {loc: gl.getUniformLocation(colorProgram, "uSampler")},
+            colormap:   {loc: gl.getUniformLocation(colorProgram, "uColorMap")}
+        };
+    
+        //Attributes
+        let aVertexPosition = gl.getAttribLocation(colorProgram, "aVertexPosition");
+        gl.activeTexture(gl.TEXTURE0);
+        gl.vertexAttribPointer(aVertexPosition, 2, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(aVertexPosition);
+    }
+
+    // Build texture preview shader program
+    if (!previewProgram) {
+        const shaderSet = [
+            {type: glViewer.FRAGMENT_SHADER, name: "preview"},
+            {type: glViewer.VERTEX_SHADER, name: "vertex"}
+        ];
+        previewProgram = buildShaderProgram(glViewer, shaderSet);
+        glViewer.useProgram(previewProgram);
+    
+        //Create vertices for quad
+        let vertexArray = new Float32Array([
+            -1.0, 1.0, 1.0, 1.0, 1.0, -1.0,
+            -1.0, 1.0, 1.0, -1.0, -1.0, -1.0
+        ]);
+        let vertexBuffer = glViewer.createBuffer();
+        glViewer.bindBuffer(glViewer.ARRAY_BUFFER, vertexBuffer);
+        glViewer.bufferData(glViewer.ARRAY_BUFFER, vertexArray, glViewer.STATIC_DRAW);
+    
+        //Uniforms
+        previewUniforms = {
+            sampler:    {loc: glViewer.getUniformLocation(previewProgram, "uSampler")}
+        };
+    
+        //Attributes
+        let aVertexPosition = glViewer.getAttribLocation(previewProgram, "aVertexPosition");
+        glViewer.activeTexture(glViewer.TEXTURE0);
+        glViewer.vertexAttribPointer(aVertexPosition, 2, glViewer.FLOAT, false, 0, 0);
+        glViewer.enableVertexAttribArray(aVertexPosition);
+
+
+        glViewer.uniform1i(previewUniforms.sampler.loc, 0);
+        glViewer.activeTexture(glViewer.TEXTURE0);
+        glViewer.bindTexture(glViewer.TEXTURE_2D, previewTex);
+    }
 }
 
-//Main function
+//Main function, is called after all resources are loaded
 function main() {
     //Check if WebGL2 is available
     if (gl == null) {
         alert("Unable to initialize WebGL 2 context");
         return;
     }
+    //Build nstate map
+    for (let i = 2; i <= 14; i++) {
+        nStateMap[maxRuleSubIndex(i)] = i;
+    }
 
+    //Texture data
     parameters.fillRandom();
 
     //Handlers
@@ -248,43 +472,43 @@ function mapResource(name) {
     return (data) => {
         resources[name] = data;
         resourcesRemaining -= 1;
-        console.log(`${name} loaded, ${resourcesRemaining} remain`);
+        console.info(`${name} loaded, ${resourcesRemaining} remain`);
         if (resourcesRemaining == 0)
             main();
     };
 }
 
 //Compile a shader from given code and gl shader type
-function compileShader(code, type) {
-    let shader = gl.createShader(type);
+function compileShader(glc, name, code, type) {
+    let shader = glc.createShader(type);
   
-    gl.shaderSource(shader, code);
-    gl.compileShader(shader);
+    glc.shaderSource(shader, code);
+    glc.compileShader(shader);
   
-    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-        console.log(`Error compiling ${type === gl.VERTEX_SHADER ? "vertex" : "fragment"} shader:`);
-        console.log(gl.getShaderInfoLog(shader));
+    if (!glc.getShaderParameter(shader, glc.COMPILE_STATUS)) {
+        console.error(`Error compiling ${type === glc.VERTEX_SHADER ? "vertex" : "fragment"} shader "${name}":`);
+        console.log(glc.getShaderInfoLog(shader));
     }
     return shader;
 }
 
 //Build the shader program from given shader informations
-function buildShaderProgram(shaderInfo) {
-    let program = gl.createProgram();
+function buildShaderProgram(glc, shaderInfo) {
+    let program = glc.createProgram();
 
     shaderInfo.forEach(function(sInfo) {
-        let shader = compileShader(resources[sInfo.name], sInfo.type);
+        let shader = compileShader(glc, sInfo.name, resources[sInfo.name], sInfo.type);
 
         if (shader) {
-            gl.attachShader(program, shader);
+            glc.attachShader(program, shader);
         }
     });
 
-    gl.linkProgram(program)
+    glc.linkProgram(program)
 
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+    if (!glc.getProgramParameter(program, glc.LINK_STATUS)) {
         console.error("Error linking shader program:");
-        console.info(gl.getProgramInfoLog(program));
+        console.info(glc.getProgramInfoLog(program));
     }
 
     return program;
@@ -293,12 +517,14 @@ function buildShaderProgram(shaderInfo) {
 //Restart
 function clear() {
     flip = false;
-    gl.bindFramebuffer(gl.FRAMEBUFFER, fbA);
-    gl.clearColor(0, 0, 0, 1.0);
-    gl.clear(gl.COLOR_BUFFER_BIT);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, fbB);
-    gl.clearColor(0, 0, 0, 1.0);
-    gl.clear(gl.COLOR_BUFFER_BIT);
+    if (fbA && fbB) {
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fbA);
+        gl.clearColor(0, 0, 0, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fbB);
+        gl.clearColor(0, 0, 0, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+    }
 }
 
 //Resize
@@ -313,12 +539,11 @@ function resize(e) {
 function step() {
     parameters.pause = true;
     animateScene();
-    animateScene();
 }
 
 //Mutate current rule
 function mutate() {
-    let mRule = [...curRule];
+    let mRule = [...ruleData];
     let i = Math.floor(Math.random() * mRule.length);
     mRule[i] = mRule[i] == 0 ? 1 : 0;
     setRule(mRule);
@@ -349,4 +574,6 @@ gui.add(parameters, "fillRandom").name("fill randomly");
 canvas.width = window.innerWidth / parameters.scale;
 canvas.height = window.innerHeight / parameters.scale;
 $.get("vertex.glsl", mapResource("vertex"));
-$.get("frag.glsl", mapResource("frag"));
+$.get("simulate.glsl", mapResource("simulate"));
+$.get("colormap.glsl", mapResource("colormap"));
+$.get("preview.glsl", mapResource("preview"));
