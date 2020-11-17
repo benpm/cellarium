@@ -60,8 +60,8 @@ const parameters = {
 };
 // Preset rules
 const presets = {
-    gol:           [0,0,0,0,0,1,0,0,0, // Converted
-                    0,0,0,0,0,1,1,0,0],
+    gol:           [0,0,0,1,0,0,0,0,0, // Converted
+                    0,0,1,1,0,0,0,0,0],
     worms:         [0,1,0,0,0,1,0,1,1, // NOT Converted
                     0,0,0,0,1,1,1,1,1],
     maze:          [1,1,0,1,0,0,0,0,1, // NOT Converted

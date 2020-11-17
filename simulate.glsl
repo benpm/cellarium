@@ -14,7 +14,7 @@ uniform int uSubIndices;        // Number pf subrule indices
 
 // Convert floating point num to byte
 int fbyte(float n) {
-    return int(floor(n * 255.0 + 0.5));
+    return int(floor(n * 255.0));
 }
 
 // Returns binomial coefficient (n choose k) from precompute texture
@@ -32,10 +32,16 @@ int get(vec2 pos) {
 }
 
 void main(void) {
+    int curstate = get(vTextureCoord);
+
     // Counts of each neighbor type
     int nCounts[14];
     for (int i = 0; i < 14; i++) {
-        nCounts[i] = 0;
+        if (i == curstate) {
+            nCounts[i] = -1;
+        } else {
+            nCounts[i] = 0;
+        }
     }
     // Size of a pixel in texture coordinates
     vec2 pSize = vec2(1.0 / uWidth, 1.0 / uHeight);
@@ -43,13 +49,10 @@ void main(void) {
     // Determine neighbor counts
     for (int x = -1; x <= 1; x += 1) {
         for (int y = -1; y <= 1; y += 1) {
-            if (x != 0 && y != 0) {
-                int v = get(vTextureCoord + pSize * vec2(x, y));
-                for (int i = 0; i < 14; i++) {
-                    if (i == v) {
-                        nCounts[i] += 1;
-                        break;
-                    }
+            int v = get(vTextureCoord + pSize * vec2(x, y));
+            for (int i = 0; i < 14; i++) {
+                if (i == v) {
+                    nCounts[i] += 1;
                 }
             }
         }
@@ -70,7 +73,6 @@ void main(void) {
         }
     }
     // Compute final rule index given current state and neighbor states
-    int curstate = get(vTextureCoord);
     int ruleIndex = curstate * uSubIndices + subIndex;
     // Convert 1D rule index into 2D coordinate into rule texture
     int newstate = int(floor(texture2D(uRule,
@@ -78,9 +80,6 @@ void main(void) {
             (mod(float(ruleIndex), 1024.0) + 0.5) / 1024.0,
             (floor(float(ruleIndex) / 1024.0) + 0.5) / 1024.0
         )).r * 255.0 + 0.5));
-
-    //DEBUG
-    // newstate = ruleIndex;
 
     // Left click and right click to add cells
     float pMouseDist = distance(
@@ -96,4 +95,24 @@ void main(void) {
 
     // Output new state
     gl_FragColor = vec4(vec3(float(newstate) / 255.0), 1.0);
+
+    /* vec2 pSize = vec2(1.0 / uWidth, 1.0 / uHeight);
+    int curstate = get(vTextureCoord);
+    int n = -curstate;
+    for (int x = -1; x <= 1; x += 1) {
+        for (int y = -1; y <= 1; y += 1) {
+            if (get(vTextureCoord + pSize * vec2(x, y)) > 0) {
+                n += 1;
+            }
+        }
+    }
+
+    int newstate = 0;
+    if (curstate == 0 && n == 3) {
+        newstate = 1;
+    } else if (curstate == 1 && (n == 2 || n == 3)) {
+        newstate = 1;
+    }
+
+    gl_FragColor = vec4(vec3(float(newstate) / 255.0), 1.0); */
 }
