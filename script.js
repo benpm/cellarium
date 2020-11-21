@@ -1,5 +1,6 @@
 'use strict';
 
+const lz4 = require("lz4js");
 const canvas = document.getElementById("glCanvas");
 const gl = canvas.getContext("webgl2");
 const blending = gl.NEAREST;
@@ -28,13 +29,25 @@ var fbB;                                    // Framebuffer B ID
 var gui;                                    // datgui object
 var touchID;                                // For identifying touch events
 var ruleData = new Uint8Array(1024 * 1024); // The actual CA rule data
+var nStates = 2;                            // Number of states in the CA rule
 
 // Simulation parameters for datgui
 const parameters = {
     clear: clear,
     step: step,
-    newRule: () => { setRule(randomRule(2)); },
-    customRule: () => { alert("not implemented"); },
+    newRule: () => { setRule(randomRule(nStates)); },
+    customRule: () => {
+        let string = prompt("input some text:");
+        if (string) {
+            let states = minStates(string.length);
+            let rule = new Uint8Array(ruleLength(states));
+            rule.fill(0);
+            for (let i = 0; i < string.length; i++) {
+                rule[i] = string.charCodeAt(i) % states;
+            }
+            setRule(rule);
+        }
+    },
     mutate: mutate,
     germinate: () => {
         // Clear with a single spot in the center
@@ -53,45 +66,58 @@ const parameters = {
         }
         webGlSetup(data);
     },
+    import: () => {
+        document.querySelector("#ruledata").select();
+        document.execCommand("paste");
+        importRule($("#ruledata").val());
+    },
+    export: () => {
+        $("#ruledata").val(exportRule(ruleData.slice(0, ruleLength(nStates))));
+        document.querySelector("#ruledata").select();
+        document.execCommand("copy");
+    },
     penSize: 50.0,
     pause: false,
     scale: 2,
+    nStates: 2,
     preset: "gol"
 };
 // Preset rules
 const presets = {
-    gol:           [0,0,0,1,0,0,0,0,0, // Converted
-                    0,0,1,1,0,0,0,0,0],
-    worms:         [0,1,0,0,0,1,0,1,1, // NOT Converted
-                    0,0,0,0,1,1,1,1,1],
-    maze:          [1,1,0,1,0,0,0,0,1, // NOT Converted
-                    1,0,1,1,1,0,1,1,0],
-    boxes:         [1,1,0,1,0,0,0,1,1, // NOT Converted
-                    0,1,1,1,0,1,0,0,1],
-    hilbert:       [0,1,0,0,0,0,0,0,0, // NOT Converted
-                    0,1,1,1,1,1,1,1,1],
-    snakes:        [0,1,1,1,1,1,1,1,1, // NOT Converted
-                    1,1,0,0,1,1,1,0,0],
-    stars:         [0,0,1,1,0,0,1,1,0, // NOT Converted
-                    0,0,1,1,0,1,1,1,1],
-    nicetiles:     [1,1,1,0,0,0,0,0,1, // NOT Converted
-                    0,1,1,1,0,1,0,0,1],
-    tricircuit:    [1,1,1,0,0,0,0,0,1, // NOT Converted
-                    0,1,1,1,1,1,0,0,1],
-    sierpinski1:   [0,1,0,0,0,0,0,0,0, // NOT Converted
-                    0,1,1,0,1,1,1,1,1],
-    machine:       [0,1,0,0,0,0,0,0,1, // NOT Converted
-                    1,1,1,1,0,0,0,1,0],
-    tearing:       [0,0,0,0,1,1,1,1,1, // NOT Converted
-                    0,0,0,1,0,1,1,0,1],
-    complexmaze:   [0,0,0,1,0,0,0,0,0, // NOT Converted
-                    0,0,1,1,1,1,0,1,0],
-    gooeyzebra:    [1,1,1,0,1,1,0,1,1, // NOT Converted
-                    1,1,1,1,0,0,0,0,0],
-    octofractal:   [1,0,0,0,0,1,0,1,1, // NOT Converted
-                    1,1,1,1,0,0,0,1,0],
-    sierpinski2:   [1,1,0,0,0,0,0,0,1, // NOT Converted
-                    1,0,1,1,1,0,1,1,0]
+    gol:           [0,0,0,1,0,0,0,0,0,
+                       0,0,1,1,0,0,0,0,0],
+    _2_worms:         [0,1,0,0,0,1,0,1,1,
+                       0,0,0,0,1,1,1,1,1],
+    _2_maze:          [1,1,0,1,0,0,0,0,1,
+                       1,0,1,1,1,0,1,1,0],
+    _2_boxes:         [1,1,0,1,0,0,0,1,1,
+                       0,1,1,1,0,1,0,0,1],
+    _2_hilbert:       [0,1,0,0,0,0,0,0,0,
+                       0,1,1,1,1,1,1,1,1],
+    _2_snakes:        [0,1,1,1,1,1,1,1,1,
+                       1,1,0,0,1,1,1,0,0],
+    _2_stars:         [0,0,1,1,0,0,1,1,0,
+                       0,0,1,1,0,1,1,1,1],
+    _2_nicetiles:     [1,1,1,0,0,0,0,0,1,
+                       0,1,1,1,0,1,0,0,1],
+    _2_tricircuit:    [1,1,1,0,0,0,0,0,1,
+                       0,1,1,1,1,1,0,0,1],
+    _2_sierpinski1:   [0,1,0,0,0,0,0,0,0,
+                       0,1,1,0,1,1,1,1,1],
+    _2_machine:       [0,1,0,0,0,0,0,0,1,
+                       1,1,1,1,0,0,0,1,0],
+    _2_tearing:       [0,0,0,0,1,1,1,1,1,
+                       0,0,0,1,0,1,1,0,1],
+    _2_complexmaze:   [0,0,0,1,0,0,0,0,0,
+                       0,0,1,1,1,1,0,1,0],
+    _2_gooeyzebra:    [1,1,1,0,1,1,0,1,1,
+                       1,1,1,1,0,0,0,0,0],
+    _2_octofractal:   [1,0,0,0,0,1,0,1,1,
+                       1,1,1,1,0,0,0,1,0],
+    _2_sierpinski2:   [1,1,0,0,0,0,0,0,1,
+                       1,0,1,1,1,0,1,1,0],
+    _4_trimoss:        `%Cn9aĀk"!¡TAA33S22R$D4Q2!C41DSRS##R1RCC"!141C1""2!BS4C!!Q"#!#D1CQ$!!432"1#C2R#$4""C2CAT2!12BC""C!"B4QABBR43D##4SQTR$#33C2ATCQ$SRR41C!4$2!34Q#T""DSDT2AAB1D!4!R4C!!#RS32R!C"TS4AS343A#QT#$"4Q#$QD4#C1ACD"2DC$!"A2T#32##3$!CAQ1!QR1"ST33SS#24CSTD"!2Q1!4$T$4T1C1CTSTA$B4#S3!D23T4A34"34DS#RT24A2T$D#!222#S#3"2CS"A41!$ASBS2#$#"4CA22B41S2DB334CBSRT23C!!!!`,
+    _5_speeders:       `%Cn9aĀ÷%!¡QB2e!bC5dabeU!dA2"#4Aa"RBTE1e%%e"aceea4%BTec$QSTTQe2B##QS%BUUU1CB$R%1Q!5DQ2#$CUU1A#3"3CRQCU3USdS#"bbaSDQT5QbAT5!cRcEDTd#d%#$2RE2"cdT22d%%1QBUAC%2C"S$E4"%3EaCdR4aeDU!ab5ad#D!!D#cB2C##%%a!UUS5TbRQA#R4BAa4%2"AT2aR5RDBB2CUe#2DC!SUcdR1BbQDTQQRCA"EaBad"e3E132$RCQQ3e$$aQDaU2Q5Db%S$c%Q#E#3A#QE%1U4$d4TQT1#dTQa2a42e43CDR#$da$R5c"CD1CQe5QdR%U1D$3Q"2Se"BB32ee"DD4a#$CTaCe$b"DDQSeRDCQ!U4c$$UED1c$c#%$1aSbeddED4Ae5B3E%TEBb!TC5"CS!RD!B%D24TSbB$R%Q5b"$dRdUdSE"2D!TTB4C1%RQAcb"eA"ADTadCc34#S!dRRTUce4$e1eEe1%Q"QQSSde"4UE$!c#3C2d3!23dRSEac4e$R5T5S4!%!CaQ2a4!AeS#TAeUbQE2R%2S"E3Qd$B3"TRc%"c"#accBdQ%S!EcAAaAe5CS5#DERRE"T1"C%R"#13T2#2U$cSB4QaEQ%AUAD5CD%2S2SEC4E$3d13R!eb$"B3a%$CdTA"aU5aB%$!14%Ub44"%1RU%E1C$Dc!SC$1512RR%cTeRccb!dEB%"aUb%35bBETe5B5TURBCe$dQ1R"bEaTbCRC#DE3#A2d!d$E1$c"52CcDDS$5SSSDT45bAD#%"ab5d5cSB33%dU5cb2S1$a!E"!%RBUSR$A1#bECdaSD"AUdBe2b!d#"!3C5b$4BC!ABc14S"de4A#$E1beSE2S#cAdE3b!dARC$e#ABC532RBT$R5E3US2eU$%2Q#!c!caR%43baaCDC4#2"31ScTEDd5Sd$4A!4AEb"2U1!cab3QUEC3$"Q5A#e#d#!C2Ue45c2AQ"%4T$5345a41"1b3Qb$E3CddS#a3#U"AB3SCA1AQBbbABBTdedcUDRcdDQ"2Q"B1"c%DD4"B33$De%TDbBSB$!AEUbbT$a$!!5CAQ4aB3Q44RAcd2#DE#EUC24"3C#"UBQdC3eESA1b5Tdc3!3Rd2a#!RbAT4C2Ca"5AeA1U$BU44SaeeBUS3USeb1!RS3ec1BQQa2!eAC!SCDce5D"DQA2e%D%5ec$Eac!E!dAcSb!a5S5#4SS4dQ#CD"Ac!!!!!!`
 };
 // Mapping from rule length to number of states
 var nStateMap = {};
@@ -143,8 +169,9 @@ function animateScene() {
     gl.uniform1i(simUniforms.rule.loc, 1);
     gl.uniform1i(simUniforms.binomial.loc, 2);
     gl.uniform4fv(simUniforms.mouse.loc, simUniforms.mouse.val);
-    gl.uniform1i(simUniforms.states.loc, simUniforms.states.val);
-    gl.uniform1i(simUniforms.subindices.loc, simUniforms.subindices.val);
+    /// NOTE: no idea why this works
+    gl.uniform1i(simUniforms.states.loc, 2);
+    gl.uniform1i(simUniforms.subindices.loc, 9);
     //Simulate and render to framebuffer
     gl.bindFramebuffer(gl.FRAMEBUFFER, flip ? fbB : fbA);
     gl.activeTexture(gl.TEXTURE0);
@@ -178,7 +205,7 @@ function animateScene() {
 
 //Random rule
 function randomRule(nStates) {
-    let length = maxRuleSubIndex(nStates);
+    let length = ruleLength(nStates);
     let rule = new Uint8Array(length);
     for (let i = 0; i < length; i++) {
         rule[i] = Math.floor(Math.random() * nStates);
@@ -190,25 +217,24 @@ function randomRule(nStates) {
 function setRule(rule) {
     //Check if rule is valid
     if (!rule || nStateMap[rule.length] === undefined) {
-        alert("invalid rule!");
+        console.error("invalid rule:", rule);
         return;
     }
-
-    //Rule texture
+    setnStates(nStateMap[rule.length]);
     ruleData.set(rule);
+    regenRuleTex();
+}
+
+//Regenerate rule texture from current rule data
+function regenRuleTex() {
+    //Rule texture
+    gl.useProgram(simProgram);
     ruleTex = ruleTex || gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, ruleTex);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, 1024, 1024, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, ruleData);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, blending);
-
-    let ruleString = "";
-    for (let r of rule) {
-        ruleString += r + ",";
-    }
-    console.info(`rule: [${ruleString}]`);
-    $("#info").text(`rule: [${ruleString}]`);
 }
 
 //Factorial function
@@ -272,9 +298,77 @@ function ruleSubIndex(nStates, neighbors) {
     return subIndex;
 }
 
-//Returns the maximum rule subindex for given number of states
-function maxRuleSubIndex(nStates) {
-   return nStates * binomial(nStates + 8 - 1, nStates - 1);
+//Returns the number of rule patterns (length of the rule)
+function ruleLength(nStates) {
+   return nStates * ruleSubIndices(nStates);
+}
+
+//Returns the number of rule subindices (pattern permutations)
+function ruleSubIndices(states) {
+   return binomial(states + 8 - 1, states - 1);
+}
+
+//Exports rule to unicode string
+function exportRule(rule) {
+    console.info(`exporting rule length ${rule.length}`);
+    //Treat each value in the rule as a 4-bit slice of a 16-bit number
+    let values = [];
+    for (let i = 0; i < rule.length; i += 4) {
+        let value = 0;
+        for (let j = 0; j < 4 && i + j < rule.length; j++) {
+            value |= rule[i + j] << (j * 4);
+        }
+        values.push(value);
+    }
+    let x = new Uint16Array(values);
+    let v = new Uint8Array(x.buffer);
+    let compbytes = new Uint16Array(lz4.compress(v));
+    compbytes = compbytes.map((v) => {return v + 33});
+    return String.fromCharCode(...compbytes);
+}
+
+//Imports rule from unicode string directly into current rule buffer, setting rule to given
+function importRule(string) {
+    let compbytes = new Uint8Array(string.length);
+    compbytes = compbytes.map((_, i) => { return string.charCodeAt(i) - 33});
+    let x = lz4.decompress(compbytes);
+    let values = new Uint16Array(x.buffer);
+    //Extract values from decompressed values
+    let z = 0;
+    for (let i = 0; i < values.length; i++) {
+        for (let j = 0; j < 4; j++) {
+            ruleData[z] = (values[i] >> (j * 4)) & 0xF;
+            z += 1;
+        }
+    }
+    //Infer the number of states this must have
+    let states = minStates(z);
+    setnStates(states);
+    console.info(`unpacked rule of length ${z} (${ruleLength(states)}) and nstates ${states}`);
+}
+
+//Returns the number of states needed to represent the given rule length
+function minStates(length) {
+    //Infer the number of states this must have
+    for (let i = 3; i <= 14; i++) {
+        if (ruleLength(i) > length) {
+            return i - 1;
+        }
+    }
+    return 14;
+}
+
+//Sets the current number of states
+function setnStates(states) {
+    if (states != nStates) {
+        if (states >= 2 && states < 14) {
+            nStates = states;
+            regenRuleTex();
+        } else {
+            states = nStates;
+        }
+        parameters.nStates = states;
+    }
 }
 
 //Setup for WebGL stuff
@@ -339,8 +433,8 @@ function webGlSetup(data) {
             binomial:   {loc: gl.getUniformLocation(simProgram, "uBinomial")},
             rule:       {loc: gl.getUniformLocation(simProgram, "uRule")},
             mouse:      {loc: gl.getUniformLocation(simProgram, "uMouse"), val: [0, 0, -1, 50]},
-            states:     {loc: gl.getUniformLocation(simProgram, "uStates"), val: 2},
-            subindices: {loc: gl.getUniformLocation(simProgram, "uSubIndices"), val: binomial(2 + 8 - 1, 2 - 1)}
+            states:     {loc: gl.getUniformLocation(simProgram, "uStates")},
+            subindices: {loc: gl.getUniformLocation(simProgram, "uSubIndices")}
         };
     
         //Attributes
@@ -437,7 +531,7 @@ function main() {
     }
     //Build nstate map
     for (let i = 2; i <= 14; i++) {
-        nStateMap[maxRuleSubIndex(i)] = i;
+        nStateMap[ruleLength(i)] = i;
     }
 
     //Texture data
@@ -543,15 +637,15 @@ function step() {
 
 //Mutate current rule
 function mutate() {
-    let mRule = [...ruleData];
+    let mRule = ruleData.slice(0, ruleLength(nStates));
     let i = Math.floor(Math.random() * mRule.length);
-    mRule[i] = mRule[i] == 0 ? 1 : 0;
+    mRule[i] = Math.floor(Math.random() * nStates);
     setRule(mRule);
 }
 
 //GUI
 gui = new dat.GUI();
-gui.width = 350;
+gui.width = 375;
 gui.add(parameters, "penSize", 1.0, 200.0)
     .onChange(onPenSize)
     .name("pen size");
@@ -561,10 +655,21 @@ gui.add(parameters, "pause")
     .listen()
     .onChange(() => {if (!parameters.pause) animateScene();});
 gui.add(parameters, "step");
+gui.add(parameters, "nStates", 2, 14, 1).name("# states")
+    .listen()
+    .onChange((v) => setnStates(v));
 gui.add(parameters, "preset", Object.keys(presets))
-    .onChange(() => setRule(presets[parameters.preset]));
+    .onChange(() => {
+        if (typeof(presets[parameters.preset]) == "object")
+            setRule(presets[parameters.preset]);
+        else {
+            importRule(presets[parameters.preset]);
+        }
+    });
 gui.add(parameters, "newRule").name("random rule");
-gui.add(parameters, "customRule").name("custom rule");
+gui.add(parameters, "import").name("import rule from clipboard");
+gui.add(parameters, "export").name("export rule to clipboard");
+gui.add(parameters, "customRule").name("rule from text");
 gui.add(parameters, "mutate").name("mutate rule");
 gui.add(parameters, "clear");
 gui.add(parameters, "germinate").name("germinate from center");
