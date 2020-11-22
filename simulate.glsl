@@ -87,10 +87,8 @@ void main(void) {
         floor(vTextureCoord * vec2(uWidth, uHeight)),
         floor(uMouse.xy * vec2(uWidth, uHeight)));
     if (floor(pMouseDist) < uMouse.w) {
-        if (uMouse.z == 0.0) {
-            newstate = 1;
-        } else if (uMouse.z == 2.0) {
-            newstate = 0;
+        if (uMouse.z > -1.0) {
+            newstate = int(uMouse.z);
         }
     }
 

@@ -30,12 +30,17 @@ var gui;                                    // datgui object
 var touchID;                                // For identifying touch events
 var ruleData = new Uint8Array(1024 * 1024); // The actual CA rule data
 var nStates = 2;                            // Number of states in the CA rule
+var nSubIndices = ruleSubIndices(2);        // Number of subindices in current rule
+var gui_penState;                           // Dat GUI object for pen state
 
 // Simulation parameters for datgui
 const parameters = {
     clear: clear,
     step: step,
-    newRule: () => { setRule(randomRule(nStates)); },
+    newRule: () => {
+        setRule(randomRule(nStates));
+        showCommand("new random rule");
+    },
     customRule: () => {
         let string = prompt("input some text:");
         if (string) {
@@ -46,6 +51,7 @@ const parameters = {
                 rule[i] = string.charCodeAt(i) % states;
             }
             setRule(rule);
+            showCommand(`new rule, length ${ruleLength(states)} from text`);
         }
     },
     mutate: mutate,
@@ -54,17 +60,19 @@ const parameters = {
         clear();
         let data = new Uint8Array(canvas.width * canvas.height * 3);
         let i = (canvas.width * (canvas.height / 2)) * 3;
-        data[i] = 1;
+        data[i] = parameters.penState;
         webGlSetup(data);
+        showCommand("germinated");
     },
     fillRandom: () => {
         // Clear with a single spot in the center
         clear();
         let data = new Uint8Array(canvas.width * canvas.height * 3);
         for (let i = 0; i < data.length / 3; i++) {
-            data[i * 3] = Math.round(Math.random());
+            data[i * 3] = Math.floor(Math.random() * nStates);
         }
         webGlSetup(data);
+        showCommand(`filled ${canvas.width * canvas.height} cells with random states`);
     },
     import: () => {
         document.querySelector("#ruledata").select();
@@ -77,6 +85,7 @@ const parameters = {
         document.execCommand("copy");
     },
     penSize: 50.0,
+    penState: 1,
     pause: false,
     scale: 2,
     nStates: 2,
@@ -116,9 +125,10 @@ const presets = {
                        1,1,1,1,0,0,0,1,0],
     _2_sierpinski2:   [1,1,0,0,0,0,0,0,1,
                        1,0,1,1,1,0,1,1,0],
-    _4_trimoss:        `%Cn9aĀk"!¡TAA33S22R$D4Q2!C41DSRS##R1RCC"!141C1""2!BS4C!!Q"#!#D1CQ$!!432"1#C2R#$4""C2CAT2!12BC""C!"B4QABBR43D##4SQTR$#33C2ATCQ$SRR41C!4$2!34Q#T""DSDT2AAB1D!4!R4C!!#RS32R!C"TS4AS343A#QT#$"4Q#$QD4#C1ACD"2DC$!"A2T#32##3$!CAQ1!QR1"ST33SS#24CSTD"!2Q1!4$T$4T1C1CTSTA$B4#S3!D23T4A34"34DS#RT24A2T$D#!222#S#3"2CS"A41!$ASBS2#$#"4CA22B41S2DB334CBSRT23C!!!!`,
-    _4_trains:         `%Cn9aĀk"!¡$TQRRTT#SA2"1T14AQ2BAB24CSB1SDSDB""T41CRA!1#C!#AQ"$SCARS32D!CD$QTASTADSQAQ4D2R$3T34S44Q$4AT"BA$Q1T134B4!R4TABS$BBB"D!"3Q22DQ2D"4D1CRC"BT$DB$ADBA4$S"A4R4T"S4Q!BC!T"QD4TQ#1"Q"CC3R#Q3AQDS#!DRB34AR"$B!"1Q4A2#4A$QSC!R$ARS"33CQQ42#!SQ$31C#"B!41R33AS4Q!BA"32T"#B!"R#!S$QQ#ABCRBT324A#C!CTD$S1$T1"$3#1!D$S$QBT2!RC24#!$2SCDT14SB$TDQ#1#3RAC#!!!!`,
-    _5_speeders:       `%Cn9aĀ÷%!¡QB2e!bC5dabeU!dA2"#4Aa"RBTE1e%%e"aceea4%BTec$QSTTQe2B##QS%BUUU1CB$R%1Q!5DQ2#$CUU1A#3"3CRQCU3USdS#"bbaSDQT5QbAT5!cRcEDTd#d%#$2RE2"cdT22d%%1QBUAC%2C"S$E4"%3EaCdR4aeDU!ab5ad#D!!D#cB2C##%%a!UUS5TbRQA#R4BAa4%2"AT2aR5RDBB2CUe#2DC!SUcdR1BbQDTQQRCA"EaBad"e3E132$RCQQ3e$$aQDaU2Q5Db%S$c%Q#E#3A#QE%1U4$d4TQT1#dTQa2a42e43CDR#$da$R5c"CD1CQe5QdR%U1D$3Q"2Se"BB32ee"DD4a#$CTaCe$b"DDQSeRDCQ!U4c$$UED1c$c#%$1aSbeddED4Ae5B3E%TEBb!TC5"CS!RD!B%D24TSbB$R%Q5b"$dRdUdSE"2D!TTB4C1%RQAcb"eA"ADTadCc34#S!dRRTUce4$e1eEe1%Q"QQSSde"4UE$!c#3C2d3!23dRSEac4e$R5T5S4!%!CaQ2a4!AeS#TAeUbQE2R%2S"E3Qd$B3"TRc%"c"#accBdQ%S!EcAAaAe5CS5#DERRE"T1"C%R"#13T2#2U$cSB4QaEQ%AUAD5CD%2S2SEC4E$3d13R!eb$"B3a%$CdTA"aU5aB%$!14%Ub44"%1RU%E1C$Dc!SC$1512RR%cTeRccb!dEB%"aUb%35bBETe5B5TURBCe$dQ1R"bEaTbCRC#DE3#A2d!d$E1$c"52CcDDS$5SSSDT45bAD#%"ab5d5cSB33%dU5cb2S1$a!E"!%RBUSR$A1#bECdaSD"AUdBe2b!d#"!3C5b$4BC!ABc14S"de4A#$E1beSE2S#cAdE3b!dARC$e#ABC532RBT$R5E3US2eU$%2Q#!c!caR%43baaCDC4#2"31ScTEDd5Sd$4A!4AEb"2U1!cab3QUEC3$"Q5A#e#d#!C2Ue45c2AQ"%4T$5345a41"1b3Qb$E3CddS#a3#U"AB3SCA1AQBbbABBTdedcUDRcdDQ"2Q"B1"c%DD4"B33$De%TDbBSB$!AEUbbT$a$!!5CAQ4aB3Q44RAcd2#DE#EUC24"3C#"UBQdC3eESA1b5Tdc3!3Rd2a#!RbAT4C2Ca"5AeA1U$BU44SaeeBUS3USeb1!RS3ec1BQQa2!eAC!SCDce5D"DQA2e%D%5ec$Eac!E!dAcSb!a5S5#4SS4dQ#CD"Ac!!!!!!`
+    _4_subdivider:     `%Cn9aĀT"!!đ(11$AC4"1!!Q!!!!AA1#!D!1!¡!B!$!!!T7!q!Q!1#H!đ=AQ!A"S!!Q##!!$QS!"Q$Q!"11A!"TATA3!"C"!!C!AQ^!ñB"!!""!$Q!1!#j!13!QQQ"]!aA!!R4!Á!T"!!!1!T$D!b$!A#!Q!Q#7!a$#B1+!!!$TC3!L!!8!#Ï!A21Õ!Ñ#$!4A3R$$1T!B$#!B2e!¢S!!A$!Q"ü!Á#"21RA!Q!"6!q3AT!Rg!đ&1$!$ABA!#!R$!1!!$#!"h!Q!!"ĝ!ā""QB#C"A4!!!$1÷!đ*#!""C#AQD$!AQ"!Q1Q!$B!$!!!!!`,
+    _4_rockets:        '%Cn9aĀ`"!!đ!!$Q1#A1!!B!A#3!"!đ"A!A$!2#$!##!1!!R5!r!A!11*!đ6QQQ$3D1$!1!#!!!S!Q14R!1!A$$$A!"1"!!AJ!ñ1!1QA!1!1ADAB2!Ñ#!!"Q!!"A1T0!Á!AQ"11!$!1z!!(!QBSQt!c2Q!2!đ#Q"RS!!B"R#!1"!A!Qb!đQ1$D!1!QC!!#!11QS!$!A#Q!Q1A!1B13"QTQQD11!C!$$2C!$!!!AR!!2!R!$RQ!0!3#B!C!"<!A1BÏ!đ&$A!$!#!Q#3!$!R!T!"#R1!đ/Q!DQ!2"!Q""!!!31A!!4!!Q"RC!Q4æ!á$"Q#3"!!"!"3!!!!',
+    _3_travellers:     `%Cn9aĀc!!!Á!!1!!##!2!$!đ"!#!1!31!A1!!"!#!$!A!!(!āA"113!A!1A!!#A?!ÁA"!"!A!#A!!!!!`,
+    _3_glidercity:     `%Cn9aĀ]!!!Ē"!#!!"!1!"1!!!#"10!1!"!D"A6!!B!1"I!"1!đ%#!!1#!113!!2!!2!!A!!!!!`
 };
 // Mapping from rule length to number of states
 var nStateMap = {};
@@ -140,13 +150,22 @@ const colorMap = new Uint8Array([
     /* 13 */ 50, 175, 255
 ]);
 
+function showCommand(string) {
+    console.info(string);
+    $("#info").text("-> " + string);
+}
+
 function mouseHandler(e) {
     simUniforms.mouse.val[0] = ((Math.floor(e.pageX)) / window.innerWidth);
     simUniforms.mouse.val[1] = ((Math.floor(e.pageY)) / window.innerHeight);
 }
 
 function clickOn(e) {
-    simUniforms.mouse.val[2] = e.originalEvent.button;
+    if (e.originalEvent.button == 0) {
+        simUniforms.mouse.val[2] = parameters.penState;
+    } else if (e.originalEvent.button == 2) {
+        simUniforms.mouse.val[2] = 0;
+    }
 }
 
 function clickOff(e) {
@@ -155,6 +174,61 @@ function clickOff(e) {
 
 function onPenSize() {
     simUniforms.mouse.val[3] = parameters.penSize;
+}
+
+function onScrollWheel(e) {
+    parameters.penSize -= e.originalEvent.deltaY < 0 ? -1 : +1;
+    parameters.penSize = Math.min(Math.max(1, parameters.penSize), 200);
+    onPenSize();
+}
+
+function onKey(e) {
+    let key = e.originalEvent.key;
+    console.debug(e);
+    switch(key) {
+        case " ":
+        case "Space":
+        case "spacebar":
+            parameters.pause = !parameters.pause;
+            if (!parameters.pause) animateScene();
+            break;
+        case "s":
+            parameters.step();
+            break;
+        case "r":
+            parameters.newRule();
+            break;
+        case "g":
+            parameters.germinate();
+            break;
+        case "f":
+            parameters.fillRandom();
+            break;
+        case "m":
+            parameters.mutate();
+            break;
+        case "-":
+            parameters.scale = Math.max(parameters.scale - 1, 1);
+            resize();
+            break;
+        case "=":
+            parameters.scale = Math.min(parameters.scale + 1, 8);
+            resize();
+            break;
+        case "c":
+        case "backspace":
+        case "delete":
+            clear();
+            break;
+        default:
+            if (!isNaN(parseInt(key))) {
+                let n = parseInt(key);
+                if (n >= 1 && n < nStates) {
+                    parameters.penState = n;
+                }
+            }
+            break;
+    }
 }
 
 //Render to the screen
@@ -170,9 +244,8 @@ function animateScene() {
     gl.uniform1i(simUniforms.rule.loc, 1);
     gl.uniform1i(simUniforms.binomial.loc, 2);
     gl.uniform4fv(simUniforms.mouse.loc, simUniforms.mouse.val);
-    /// NOTE: no idea why this works
-    gl.uniform1i(simUniforms.states.loc, 2);
-    gl.uniform1i(simUniforms.subindices.loc, 9);
+    gl.uniform1i(simUniforms.states.loc, nStates);
+    gl.uniform1i(simUniforms.subindices.loc, nSubIndices);
     //Simulate and render to framebuffer
     gl.bindFramebuffer(gl.FRAMEBUFFER, flip ? fbB : fbA);
     gl.activeTexture(gl.TEXTURE0);
@@ -208,8 +281,13 @@ function animateScene() {
 function randomRule(nStates) {
     let length = ruleLength(nStates);
     let rule = new Uint8Array(length);
+    let zeroChance = Math.max(1 - (1 / Math.pow(nStates, 0.50)), 0.50);
     for (let i = 0; i < length; i++) {
-        rule[i] = Math.floor(Math.random() * nStates);
+        if (Math.random() < zeroChance) {
+            rule[i] = 0;
+        } else {
+            rule[i] = Math.floor(Math.random() * nStates);
+        }
     }
     return rule;
 }
@@ -325,7 +403,9 @@ function exportRule(rule) {
     let v = new Uint8Array(x.buffer);
     let compbytes = new Uint16Array(lz4.compress(v));
     compbytes = compbytes.map((v) => {return v + 33});
-    return String.fromCharCode(...compbytes);
+    let string = String.fromCharCode(...compbytes)
+    showCommand(`exported rule w/ string length ${string.length}`);
+    return string;
 }
 
 //Imports rule from unicode string directly into current rule buffer, setting rule to given
@@ -345,7 +425,7 @@ function importRule(string) {
     //Infer the number of states this must have
     let states = minStates(z);
     setnStates(states);
-    console.info(`unpacked rule of length ${z} (${ruleLength(states)}) and nstates ${states}`);
+    showCommand(`unpacked rule of length ${z} (${ruleLength(states)}) and nstates ${states}`);
     regenRuleTex();
 }
 
@@ -365,6 +445,12 @@ function setnStates(states) {
     if (states != nStates) {
         if (states >= 2 && states < 14) {
             nStates = states;
+            if (parameters.penState >= nStates) {
+                parameters.penState = nStates - 1;
+            }
+            gui_penState.max(nStates - 1);
+            gui_penState.updateDisplay();
+            nSubIndices = ruleSubIndices(nStates);
             regenRuleTex();
         } else {
             states = nStates;
@@ -544,6 +630,8 @@ function main() {
     $(canvas).on("mousedown", clickOn);
     $(canvas).on("mouseup", clickOff);
     $(window).on("resize", resize);
+    $(canvas).on("wheel", onScrollWheel);
+    $(window).on("keypress", onKey);
 
     //Mouse emulation with touch
     $(canvas).on("touchstart", (e) => {
@@ -621,6 +709,7 @@ function clear() {
         gl.clearColor(0, 0, 0, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT);
     }
+    showCommand(`cleared canvas`);
 }
 
 //Resize
@@ -639,20 +728,29 @@ function step() {
 
 //Mutate current rule
 function mutate() {
-    let mRule = ruleData.slice(0, ruleLength(nStates));
-    let i = Math.floor(Math.random() * mRule.length);
-    mRule[i] = Math.floor(Math.random() * nStates);
-    setRule(mRule);
+    let length = ruleLength(nStates);
+    let nMutate = Math.ceil(length / 20);
+    for (let i = 0; i < nMutate; i++) {
+        let j = Math.floor(Math.random() * length);
+        ruleData[j] = Math.floor(Math.random() * nStates);
+    }
+    regenRuleTex();
+    showCommand(`mutated ${nMutate} values`);
 }
 
 //GUI
 gui = new dat.GUI();
 gui.width = 375;
 gui.add(parameters, "penSize", 1.0, 200.0)
+    .listen()
     .onChange(onPenSize)
     .name("pen size");
-gui.add(parameters, "scale", 1, 8)
-    .onChange(resize).step(1);
+gui_penState = gui.add(parameters, "penState", 1, 1, 1)
+    .listen()
+    .name("pen state");
+gui.add(parameters, "scale", 1, 8, 1)
+    .listen()
+    .onChange(resize);
 gui.add(parameters, "pause")
     .listen()
     .onChange(() => {if (!parameters.pause) animateScene();});
