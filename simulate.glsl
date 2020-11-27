@@ -6,8 +6,7 @@ varying vec2 vTextureCoord;     // Texture coordinates 0.0 to 1.0
 uniform sampler2D uSampler;     // Input states texture
 uniform sampler2D uRule;        // The cellular automata rule
 uniform sampler2D uBinomial;    // Pre-computed binomial coefficents (n and k up to 32)
-uniform float uWidth;           // Width of canvas in pixels
-uniform float uHeight;          // Height of canvas in pixels
+uniform vec2 uSize;             // Size of simulation canvas in pixels
 uniform vec4 uMouse;            // Position of mouse, plus left / right button states
 uniform int uStates;            // Number of states in this rule (MAX 14)
 uniform int uSubIndices;        // Number pf subrule indices
@@ -44,7 +43,7 @@ void main(void) {
         }
     }
     // Size of a pixel in texture coordinates
-    vec2 pSize = vec2(1.0 / uWidth, 1.0 / uHeight);
+    vec2 pSize = 1.0 / uSize;
 
     // Determine neighbor counts
     for (int x = -1; x <= 1; x += 1) {
@@ -82,10 +81,21 @@ void main(void) {
             (floor(float(ruleIndex) / 1024.0) + 0.5) / 1024.0
         )).r * 255.0 + 0.5));
 
-    // Left click and right click to add cells
-    float pMouseDist = distance(
-        floor(vTextureCoord * vec2(uWidth, uHeight)),
-        floor(uMouse.xy * vec2(uWidth, uHeight)));
+    // Calculate toroidal distance to mouse
+    vec2 pixPos = floor(vTextureCoord * uSize);
+    float pMouseDist = min(
+        distance(pixPos, uMouse.xy * uSize),
+        min(
+            min(
+                distance(pixPos, (uMouse.xy - vec2(1.0, 0.0)) * uSize),
+                distance(pixPos, (uMouse.xy - vec2(0.0, 1.0)) * uSize)),
+            min(
+                distance(pixPos, (uMouse.xy + vec2(1.0, 0.0)) * uSize),
+                distance(pixPos, (uMouse.xy + vec2(0.0, 1.0)) * uSize))
+        )
+    );
+
+    // Mouse click adds cells
     if (floor(pMouseDist) < uMouse.w) {
         if (uMouse.z > -1.0) {
             newstate = int(uMouse.z);

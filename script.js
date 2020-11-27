@@ -5,6 +5,7 @@ const canvas = document.getElementById("glCanvas");
 const gl = canvas.getContext("webgl2");
 const blending = gl.NEAREST;
 const edgeBehavior = gl.REPEAT;
+const _ext_depth = gl.getExtension("WEBGL_depth_texture");
 
 /* Global Variables */
 var resources = {};                         // Map of resource names to resources such as frag / vert shader
@@ -12,11 +13,8 @@ var resourcesRemaining = 0;                 // Number of remaining resources to 
 var flip = false;                           // Framebuffer flip
 var simProgram;                             // The GL shader program for simulation (see simulate.glsl)
 var colorProgram;                           // The GL shader program for colormapping (see colormap.glsl)
-var previewProgram;                         // The GL shader program for previewing (see preview.glsl)
 var simUniforms;                            // Fragment shader uniform map for simulation shader
 var colorUniforms;                          // Fragment shader uniform map for colormapping shader
-var previewUniforms;                        // Fragment shader uniform map for colormapping shader
-var previewTex;                             // Texture ID for texture preview
 var texB;                                   // Framebuffer B GL texture ID
 var texA;                                   // Framebuffer A GL texture ID
 var ruleTex;                                // Cellular automata rule GL texture ID
@@ -36,10 +34,14 @@ var cam = {
     zoom: 1,
     panstartcam: {x:0, y:0},
     panstartmouse: {x:0, y:0},
-    panning: false
+    panning: false,
+    move: {x:0, y:0}
 };
-var simSize = 2048;
+var simSize = 1024;
 var doStep = false;
+var frames = 0;
+var steps = 0;
+var lastFPSSample = Date.now();
 
 // Simulation parameters for datgui
 const parameters = {
@@ -66,8 +68,8 @@ const parameters = {
     germinate: () => {
         // Clear with a single spot in the center
         clear();
-        let data = new Uint8Array(simSize * simSize * 3);
-        let i = (simSize * (simSize / 2)) * 3;
+        let data = new Uint8Array(simSize * simSize);
+        let i = (simSize * (simSize / 2));
         data[i] = parameters.penState;
         webGlSetup(data);
         showCommand("germinated");
@@ -75,9 +77,9 @@ const parameters = {
     fillRandom: () => {
         // Clear with a single spot in the center
         clear();
-        let data = new Uint8Array(simSize * simSize * 3);
-        for (let i = 0; i < data.length / 3; i++) {
-            data[i * 3] = Math.floor(Math.random() * nStates);
+        let data = new Uint8Array(simSize * simSize);
+        for (let i = 0; i < data.length; i++) {
+            data[i] = Math.floor(Math.random() * nStates);
         }
         webGlSetup(data);
         showCommand(`filled ${simSize * simSize} cells with random states`);
@@ -96,6 +98,8 @@ const parameters = {
     penState: 1,
     pause: false,
     nStates: 2,
+    simsize: simSize,
+    stepsPerFrame: 1,
     preset: "gol"
 };
 // Preset rules
@@ -189,6 +193,7 @@ function clickOn(e) {
             cam.panstartmouse.y = e.pageY;
             cam.panstartcam.x = cam.x;
             cam.panstartcam.y = cam.y;
+            canvas.style.cursor = "move";
             break;
         case 2: // Right click
             simUniforms.mouse.val[2] = 0;
@@ -204,6 +209,7 @@ function clickOff(e) {
             break;
         case 1: // Middle click
             cam.panning = false;
+            canvas.style.cursor = "";
             break;
     }
 }
@@ -221,13 +227,11 @@ function onScrollWheel(e) {
 
 function onKey(e) {
     let key = e.originalEvent.key;
-    console.debug(e);
     switch(key) {
         case " ":
         case "Space":
         case "spacebar":
             parameters.pause = !parameters.pause;
-            if (!parameters.pause) animateScene();
             break;
         case "s":
             parameters.step();
@@ -249,6 +253,18 @@ function onKey(e) {
         case "delete":
             clear();
             break;
+        case "ArrowLeft":
+            cam.move.x = -3;
+            break;
+        case "ArrowRight":
+            cam.move.x = 3;
+            break;
+        case "ArrowUp":
+            cam.move.y = -3;
+            break;
+        case "ArrowDown":
+            cam.move.y = 3;
+            break;
         default:
             if (!isNaN(parseInt(key))) {
                 let n = parseInt(key);
@@ -260,44 +276,55 @@ function onKey(e) {
     }
 }
 
+function onKeyUp(e) {
+    let key = e.originalEvent.key;
+    switch(key) {
+        case "ArrowLeft":
+        case "ArrowRight":
+            cam.move.x = 0;
+            break;
+        case "ArrowUp":
+        case "ArrowDown":
+            cam.move.y = 0;
+            break;
+    }
+}
+
 //Render to the screen
 function animateScene() {
-    gl.viewport(0, 0, simSize, simSize);
-
     /* Simulation */
     if (!parameters.pause || doStep) {
+        gl.viewport(0, 0, simSize, simSize);
         gl.useProgram(simProgram);
-        flip = !flip;
         //Set simUniforms
-        gl.uniform1f(simUniforms.width.loc, simSize);
-        gl.uniform1f(simUniforms.height.loc, simSize);
-        gl.uniform1i(simUniforms.sampler.loc, 0);
-        gl.uniform1i(simUniforms.rule.loc, 1);
-        gl.uniform1i(simUniforms.binomial.loc, 2);
         gl.uniform4fv(simUniforms.mouse.loc, simUniforms.mouse.val);
-        gl.uniform1i(simUniforms.states.loc, nStates);
-        gl.uniform1i(simUniforms.subindices.loc, nSubIndices);
-        //Simulate and render to framebuffer
-        gl.bindFramebuffer(gl.FRAMEBUFFER, flip ? fbB : fbA);
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, flip ? texA : texB);
         gl.activeTexture(gl.TEXTURE1);
         gl.bindTexture(gl.TEXTURE_2D, ruleTex);
         gl.activeTexture(gl.TEXTURE2);
         gl.bindTexture(gl.TEXTURE_2D, binomialTex);
-        gl.drawArrays(gl.TRIANGLES, 0, 6);
-        doStep = false;
+        //Simulate N steps
+        for (let i = 0; i < parameters.stepsPerFrame; i++) {
+            flip = !flip;
+            //Simulate and render to framebuffer
+            gl.bindFramebuffer(gl.FRAMEBUFFER, flip ? fbB : fbA);
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, flip ? texA : texB);
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+            steps += 1;
+            if (doStep) {
+                doStep = false;
+                break;
+            }
+        }
     }
 
     /* Colormapping */
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.useProgram(colorProgram);
     //Colormap uniforms
-    gl.uniform1i(colorUniforms.sampler.loc, 0);
-    gl.uniform1i(colorUniforms.colormap.loc, 1);
+    cam.x += cam.move.x;
+    cam.y += cam.move.y;
     gl.uniform3fv(colorUniforms.cam.loc, [cam.x, cam.y, cam.zoom]);
-    gl.uniform2fv(colorUniforms.screen.loc, [canvas.width, canvas.height]);
-    gl.uniform2fv(colorUniforms.simSize.loc, [simSize, simSize]);
     //Colormap and render to canvas
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.activeTexture(gl.TEXTURE0);
@@ -307,6 +334,13 @@ function animateScene() {
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
     //Next frame
+    frames += 1;
+    if (Date.now() - lastFPSSample >= 1000) {
+        lastFPSSample = Date.now();
+        $("#rtinfo").html(`${frames} frames/sec<br>${steps} steps/sec`);
+        frames = 0;
+        steps = 0;
+    }
     window.requestAnimationFrame(animateScene);
 }
 
@@ -347,6 +381,9 @@ function regenRuleTex() {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, blending);
+    
+    gl.uniform1i(simUniforms.states.loc, nStates);
+    gl.uniform1i(simUniforms.subindices.loc, nSubIndices);
 }
 
 //Factorial function
@@ -490,11 +527,7 @@ function webGlSetup(data) {
     //Texture A
     texA = texA || gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texA);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, 
-        simSize,
-        simSize,
-        0, gl.RGB, gl.UNSIGNED_BYTE, data || null
-    );
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, simSize, simSize, 0, gl.RED, gl.UNSIGNED_BYTE, data || null);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, edgeBehavior);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, edgeBehavior);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, blending);
@@ -506,11 +539,7 @@ function webGlSetup(data) {
     //Texture B
     texB = texB || gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texB);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, 
-        simSize,
-        simSize,
-        0, gl.RGB, gl.UNSIGNED_BYTE, data || null
-    );
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, simSize, simSize, 0, gl.RED, gl.UNSIGNED_BYTE, data || null);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, edgeBehavior);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, edgeBehavior);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, blending);
@@ -543,8 +572,7 @@ function webGlSetup(data) {
     
         //Uniforms
         simUniforms = {
-            width:      {loc: gl.getUniformLocation(simProgram, "uWidth")},
-            height:     {loc: gl.getUniformLocation(simProgram, "uHeight")},
+            size:       {loc: gl.getUniformLocation(simProgram, "uSize")},
             sampler:    {loc: gl.getUniformLocation(simProgram, "uSampler")},
             binomial:   {loc: gl.getUniformLocation(simProgram, "uBinomial")},
             rule:       {loc: gl.getUniformLocation(simProgram, "uRule")},
@@ -561,7 +589,16 @@ function webGlSetup(data) {
 
         //Rule texture
         setRule(presets[parameters.preset]);
+
+        //Set these uniforms once
+        gl.uniform1i(simUniforms.sampler.loc, 0);
+        gl.uniform1i(simUniforms.rule.loc, 1);
+        gl.uniform1i(simUniforms.binomial.loc, 2);
+    } else {
+        gl.useProgram(simProgram);
     }
+
+    gl.uniform2fv(simUniforms.size.loc, [simSize, simSize]);
 
     // Build colormap shader program
     if (!colorProgram) {
@@ -604,7 +641,16 @@ function webGlSetup(data) {
         gl.activeTexture(gl.TEXTURE0);
         gl.vertexAttribPointer(aVertexPosition, 2, gl.FLOAT, false, 0, 0);
         gl.enableVertexAttribArray(aVertexPosition);
+
+        //Set these uniforms once
+        gl.uniform1i(colorUniforms.sampler.loc, 0);
+        gl.uniform1i(colorUniforms.colormap.loc, 1);
+        gl.uniform2fv(colorUniforms.screen.loc, [canvas.width, canvas.height]);
+    } else {
+        gl.useProgram(colorProgram);
     }
+
+    gl.uniform2fv(colorUniforms.simSize.loc, [simSize, simSize]);
 }
 
 //Main function, is called after all resources are loaded
@@ -628,7 +674,8 @@ function main() {
     $(canvas).on("mouseup", clickOff);
     $(window).on("resize", resize);
     $(canvas).on("wheel", onScrollWheel);
-    $(window).on("keypress", onKey);
+    $(window).on("keydown", onKey);
+    $(window).on("keyup", onKeyUp);
 
     //Mouse emulation with touch
     $(canvas).on("touchstart", (e) => {
@@ -713,6 +760,7 @@ function clear() {
 function resize(e) {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
+    gl.uniform2fv(colorUniforms.screen.loc, [canvas.width, canvas.height]);
 }
 
 //Single step
@@ -747,6 +795,7 @@ gui.add(parameters, "pause")
     .listen()
     .onChange(() => {if (!parameters.pause) animateScene();});
 gui.add(parameters, "step");
+gui.add(parameters, "stepsPerFrame", 1, 16, 1).name("steps per frame");
 gui.add(parameters, "nStates", 2, 14, 1).name("# states")
     .listen()
     .onChange((v) => setnStates(v));
@@ -763,6 +812,19 @@ gui.add(parameters, "import").name("import rule from clipboard");
 gui.add(parameters, "export").name("export rule to clipboard");
 gui.add(parameters, "customRule").name("rule from text");
 gui.add(parameters, "mutate").name("mutate rule");
+gui.add(parameters, "simsize",
+    [16, 64, 256, 512, 1024, 2048, 4096]).name("simulation size")
+    .onChange((v) => {
+        let ssize = Math.min(simSize, v);
+        let data = new Uint8Array(4 * v**2);
+        let slice = data.slice(0, 4 * ssize**2);
+        gl.useProgram(simProgram);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fbA);
+        gl.readPixels(0, 0, ssize, ssize, gl.RGBA, gl.UNSIGNED_BYTE, slice);
+        simSize = v;
+        data.set(slice.map((v, i, a) => i < ssize**2 ? a[i * 4] : 0).slice(0, ssize**2));
+        webGlSetup(data);
+    });
 gui.add(parameters, "clear");
 gui.add(parameters, "germinate").name("germinate from center");
 gui.add(parameters, "fillRandom").name("fill randomly");
