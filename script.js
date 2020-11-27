@@ -110,12 +110,8 @@ const presets = {
                        0,0,0,0,1,1,1,1,1],
     _2_maze:          [1,1,0,1,0,0,0,0,1,
                        1,0,1,1,1,0,1,1,0],
-    _2_boxes:         [1,1,0,1,0,0,0,1,1,
-                       0,1,1,1,0,1,0,0,1],
     _2_hilbert:       [0,1,0,0,0,0,0,0,0,
                        0,1,1,1,1,1,1,1,1],
-    _2_snakes:        [0,1,1,1,1,1,1,1,1,
-                       1,1,0,0,1,1,1,0,0],
     _2_stars:         [0,0,1,1,0,0,1,1,0,
                        0,0,1,1,0,1,1,1,1],
     _2_nicetiles:     [1,1,1,0,0,0,0,0,1,
@@ -126,23 +122,14 @@ const presets = {
                        0,1,1,0,1,1,1,1,1],
     _2_machine:       [0,1,0,0,0,0,0,0,1,
                        1,1,1,1,0,0,0,1,0],
-    _2_tearing:       [0,0,0,0,1,1,1,1,1,
-                       0,0,0,1,0,1,1,0,1],
     _2_complexmaze:   [0,0,0,1,0,0,0,0,0,
                        0,0,1,1,1,1,0,1,0],
-    _2_gooeyzebra:    [1,1,1,0,1,1,0,1,1,
-                       1,1,1,1,0,0,0,0,0],
-    _2_octofractal:   [1,0,0,0,0,1,0,1,1,
-                       1,1,1,1,0,0,0,1,0],
     _2_sierpinski2:   [1,1,0,0,0,0,0,0,1,
                        1,0,1,1,1,0,1,1,0],
-    _4_subdivider:     `%Cn9aĀT"!!đ(11$AC4"1!!Q!!!!AA1#!D!1!¡!B!$!!!T7!q!Q!1#H!đ=AQ!A"S!!Q##!!$QS!"Q$Q!"11A!"TATA3!"C"!!C!AQ^!ñB"!!""!$Q!1!#j!13!QQQ"]!aA!!R4!Á!T"!!!1!T$D!b$!A#!Q!Q#7!a$#B1+!!!$TC3!L!!8!#Ï!A21Õ!Ñ#$!4A3R$$1T!B$#!B2e!¢S!!A$!Q"ü!Á#"21RA!Q!"6!q3AT!Rg!đ&1$!$ABA!#!R$!1!!$#!"h!Q!!"ĝ!ā""QB#C"A4!!!$1÷!đ*#!""C#AQD$!AQ"!Q1Q!$B!$!!!!!`,
-    _4_rockets:        '%Cn9aĀ`"!!đ!!$Q1#A1!!B!A#3!"!đ"A!A$!2#$!##!1!!R5!r!A!11*!đ6QQQ$3D1$!1!#!!!S!Q14R!1!A$$$A!"1"!!AJ!ñ1!1QA!1!1ADAB2!Ñ#!!"Q!!"A1T0!Á!AQ"11!$!1z!!(!QBSQt!c2Q!2!đ#Q"RS!!B"R#!1"!A!Qb!đQ1$D!1!QC!!#!11QS!$!A#Q!Q1A!1B13"QTQQD11!C!$$2C!$!!!AR!!2!R!$RQ!0!3#B!C!"<!A1BÏ!đ&$A!$!#!Q#3!$!R!T!"#R1!đ/Q!DQ!2"!Q""!!!31A!!4!!Q"RC!Q4æ!á$"Q#3"!!"!"3!!!!',
-    _3_travellers:     `%Cn9aĀc!!!Á!!1!!##!2!$!đ"!#!1!31!A1!!"!#!$!A!!(!āA"113!A!1A!!#A?!ÁA"!"!A!#A!!!!!`,
-    _3_glidercity:     `%Cn9aĀ]!!!Ē"!#!!"!1!"1!!!#"10!1!"!D"A6!!B!1"I!"1!đ%#!!1#!113!!2!!2!!A!!!!!`,
-    _4_complexgliders: `%Cn9aĀQ"!!ĒG!!$!"A$!!!A!!C!#AQ"A1Q!TQQ4$Q1$14##!1C!!!#T4#!A1!!1#!"!!U!Ē,!AA!!!QD"!RAR11Q##2!!!1$QTv!āQ!Q!3A1!Q##!!QW!b31Q!a!¡RR#!1T!T7!!U!A!3'!R!1!11t!BA!!QQ$Cº!!Ç!Q!"Q¡!đ+#1#$!!D"$!1"$Q##!""3#!$$!8!ē#$$C2!QSR!!!"$!!$R^!B"!b!!M!!*!đ&$1$#"4!#!"!$QA!"#$$$!ē$!$!C!"!Q$3A$!A#!QCÍ!CT!A"AQÙ!bQQ2Bº!1$R"ñ"1!DA!C#QQ"!C!!!!`,
-    _4_matrix:         `%Cn9aĀW"!!1!"!đ6D!""!A!!T!RSA#!!4"S!Q!!C!!!A!B$4A!"QI!đ>1"!"!"$C!Q1$!!S1AS1!D!"33!!"!S!!!$!"!!#D!"Q4.!đ$AQ1!!TS$!#!"$!1"!1J!b!1Q"o!đ%AAQA"!!S!#3#$AQAQ$"W!!!đ&QS!!C"11!!#QRA!$$1!!b!¡A$!!14!$À!QQ!!j!â#!!A#1D!"#B19!rA!A!$!ABB÷!2$!#R4C|!!¿!!É!!z!A!1Î!A!Ql!¡!$T32!A$Y!a$Q!#ì!đ$SQ!"4"1Q!Q$!!"A1#3/"¡!!QQS!##^!!Á!Á2A$!!B!!"#!!!!`,
-    _5_citylights:     `%Cn9aĀ|%!!đ+!!!!ac!1a1A$!$"#T#!!!A"!d:!đ"Q"!!5!!!CQ1$"b%Q5!đ3#T!A!!ba!A11!DA$!#%#Q!Qa#!!$A!#$!b!Ñ!!%!QDA!!A%U!Q!!$V!đ)!1QT!a%S!#B!!!1!!211#!!x!1"H!āa!Q$AaA!%A!11a4!đ&a"!"!QU!$!!Q1%!2"!a!!ā"#B!"A!aQ!!Q5%c!ña!#aa4d!T""!b !###QASx!±e"#!a!aA2­!1#s!đ'1#Q!Aa5!!a!AdA1!$$%!Q¨!!°!Q$Q1r!đ&R!1%!!b"!Q1A!"a!!$Qd!A!$Ĕ!ē!C"!%!!1Q%!!5""Qĕ!¡1"#!%"Qe!"%!AQ!A!DĞ!đ"D!#"S!a!BR!S!#!#ğ!Q!C1G!qTQ"1aö!đ.%!2A#!a#1A!a!"!!$"U%$1!!%$14J!1AP!Aa!×!qS!d$37"¡!!%%!1QSÓ!B$!U"a!Q!UP!R!!3(!AQ!L"²%a1!!1#T!a"¡a%$!TU!RJ"A"A"Ē($$$A!!11#A1QRA!"#EA#!#!Ñ!%!B1Q!#%B#ò"AS%Á!ã2!A$##A!!U%Q¹"Ñ"1"#Q##1%%S!!Ē"qE!!1a°"B!C¬!!ę!B"1£!1!5#Q!%RQ#Á%!!%24"#"UV!áU$5!E%A#S!!Aø!q"41#CU!QASQ(!A#"Ñ!"-"AAA2!q%5!5#Ĝ!A$"Ê"±$$!!!A#!1ñ!1"}!Aa%?!3E¤!!""R#A"¥#1S#!P!$<!A"SÎ!q%!!Qb"!¢!q!R1"#ù"A$$"±!!Ce!1!AQĞ"!ė"a$A!QĆ#1Qä"!K#aeA#AO#a!a1!6$đ!QE"2!1B!!Q$$1!E"1!"#2#b#!³#±Q!%1a1Q!3>!áC#"Ua!!1"1!#î!A#%$110#q#!$e"7!!!#A"1a$q!Aa1a·#1#ĝ"%!!#R"ª!a!B!%­$¡Q!C!1"AbĖ!b!5%!"#aa##c|""!T"%e4!±5Qa!A"1$QÁ!!µ"1"8"¡Q!adA$$1Ď#!@$Q"$$Ć$1T"A!a´$đ$""Q$d1AQQ1cb1!R!e1Y!1!Ó#Ē#cU5T!a!%$#!Ab%#!$7"1!ċ#1$§!!ē!đ7AQdQD!!Qa!!aE!aA!A"AQaC#dQ#!%S#1!BQa%N!!â!!S#1"Á!"Ò#"Ý"!Ù"đ&%Q""#53$!%d%5d!S!a#"!!!!`,
+    _3_glidercity:     `%Cn9a´ģ]!!!ĵ"!#!!"!1!"1!!!#"10!1!"!D"A6!!B!1"I!"1!Ĵ%#!!1#!113!!2!!2!!A!!!!!`,
+    _4_complexgliders: `%Cn9a´ģQ"!!ĵG!!$!"A$!!!A!!C!#AQ"A1Q!TQQ4$Q1$14##!1C!!!#T4#!A1!!1#!"!!U!ĵ,!AA!!!QD"!RAR11Q##2!!!1$QTv!ĤQ!Q!3A1!Q##!!QW!b31Q!a!ÄRR#!1T!T7!!U!A!3'!£R!1!11t!BA!£!QQ$CÝ!!ê!Q!"QÄ!Ĵ+#1#$!!D"$!1"$Q##!""3#!$$!8!Ķ#$$C2!QSR!!!"$!!$R^!B"!b!!M!!*!Ĵ&$1$#"4!#!"!$QA!"#$$$¹!Ķ$!$!C!"!Q$3A$!A#!QCð!´CT!A"AQü!bQQ2BÝ!1$R"Ĕ"1!DA!C#QQ"!C!!!!`,
+    _4_matrix:         `%Cn9a´ģW"!!1!"!Ĵ6D!""!A!!T!RSA#!!4"S!Q!!C!!!A!B$4A!"QI!Ĵ>1"!"!"$C!Q1$!!S1AS1!D!"33!!"!S!!!$!"!!#D!"Q4.!Ĵ$AQ1!!TS$!#!"$!1"!1J!b!1Q"o!Ĵ%AAQA"!!S!#3#$AQAQ$"W!!º!Ĵ&QS!!C"11!!#QRA!$$1!!b!ÄA$!!14!$ã!QQ!!j!ą#!!A#1D!"#B19!rA!A!$¤!ABBĚ!´2$!#R4C|!!â!!ì!!z!A!1ñ!A!Ql!Ä!$T32!A$Y!a$Q!#ď!Ĵ$SQ!"4"1Q!Q$!!"A1#3/"Ä!!QQS!##^!!ä!ä2A$!!B!!"#!!!!`,
+    _5_citylights:     `%Cn9a´ģ{%!!Ĵ+!!!!ac!1a1A$!$"#T#!!!A"!d:!Ĵ"Q"!!5!!!CQ1$"b%Q5!Ĵ3#T!A!!ba!A11!DA$!#%#Q!Qa#!!$A!#$!b!ô!!%!QDA!!A%U!Q!!$V!Ĵ)!1QT!a%S!#B!!!1!!211#!!x!1"H!Ĥa!Q$AaA!%A!11a4!Ĵ&a"!"!QU!$!!Q1%!2"!a!¤!Ĥ"#B!"A!aQ!!Q5%c!Ĕa!#aa4d!T""!bn!£###QAS+!Ôe"#!a!aA2Ð!1#s!Ĵ'1#Q!Aa5!!a!AdA1!$$%!QË!!Ó!Q$Q1r!Ĵ&R!1%!!b"!Q1A!"a!!$QdÂ!A!$ķ!Ķ!C"!%!!1Q%!!5""Qĸ!Ä1"#!%"Qe¹!"%!£AQ!A!DŁ!Ĵ"D!#"S!a!BR!S!#!#ł!Q!C1G!qTQ"1aę!Ĵ.%!2A#!a#1A!a!"!!$"U%$1!!%$14J!1AP!Aa!ú!qS!d$37"Ä!!%%!1QSö!B$!U"a!Q!UP!R!!3(!AQ!L"Õ%a1!!1#T!a"Äa%$!TU!RB!A"A®"ĵ($$$A!!11#A1QRA!"#EA#!#¼!ô!%!B1Q!#%B#ĕ"AS%ä!Ć2!A$##A!!U%QÜ"ô"1"#Q##1%%S¢!!ĵ"rE!!1aÓ"1C®!!¿!Q1"1(!!0!q$!!%RQ#ä%!!%24"#"UV!ĄU$5!E%A#S!!Aě!q"41#CU!QASQ(!A#"ô!"-"AAA2!q%5!5#Ŀ!A$"í"Ô$$!!!A#!1Ĕ!1"}!Aa%?!1E¸!"%!b##A"È#1SÁ#!P!"8!a!!"Sñ!q%!!Qb«"!Å!q!R1"#Ĝ"A$$¯"Ô!!Ce!1!AQŁ"!ĺ"a$A!Qĩ#1Qć"!K#aeA#AO#a!a1!6$ĥQE"2!1B!!Q$$1!É!£1!"#2#b#!Ö#ÔQ!%1a1Q!3>!´C#"Ua!!G"1#đ!A#%º$110#µ#!$e"!#,!aA"1a¡$q!Aa1aÚ#1#ŀ"£%!!#R"Í!a!B!%Ð$´Q!C!1"A2$´#b!5%!"½#aa##c|"¤"!T"%e4!Ä5Qa!A"1$&$1!Ø"1"8"ÄQ!adA$$1ı#!;!Q"$$ĩ$1TÁ"A!a×$Ĵ$""Q$d1AQQ1cb1!R!e1Y!1!ö#ĵ#cU5T!a!%$#!Ab%#!$7"1!Į#1$Ê!!Ķ!Ĵ7AQdQD!!Qa!!aE!aA!A"AQaC#dQ#!%S#1!BQa%N!#û#1$Ł!"ã%B!!Ā"!ü"Ĵ&%Q""#53$!%d%5d!S!a#"!!!!`,
 };
 // Mapping from rule length to number of states
 var nStateMap = {};
@@ -163,6 +150,13 @@ const colorMap = new Uint8Array([
     /* 12 */ 175, 255, 50,
     /* 13 */ 50, 175, 255
 ]);
+// List of printable characters for encoding rules
+const pchars = "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~¡¢£¤¥¦§¨©ª«¬®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿĀāĂăĄąĆćĈĉĊċČčĎďĐđĒēĔĕĖėĘęĚěĜĝĞğĠġĢģĤĥĦħĨĩĪīĬĭĮįİıĲĳĴĵĶķĸĹĺĻļĽľĿŀŁłŃńŅņŇňŉŊŋŌōŎŏŐőŒœŔŕŖŗŘřŚśŜŝŞşŠšŢţŤťŦŧŨũŪūŬŭŮůŰűŲųŴŵŶŷŸŹźŻżŽžſƀƁƂƃƄƅƆƇƈƉƊƋƌƍƎƏƐƑƒƓƔƕƖƗƘƙƚƛƜƝƞƟƠơƢƣƤƥƦƧƨƩƪƫƬƭƮƯưƱƲƳƴƵƶƷƸƹƺƻƼƽƾƿǀǁǂ";
+// Map from pchar codes back to indices
+var pcharMap = {};
+for (let i = 0; i < pchars.length; i++) {
+    pcharMap[pchars.charCodeAt(i)] = i;
+}
 
 function showCommand(string) {
     console.info(string);
@@ -465,8 +459,8 @@ function exportRule(rule) {
     let x = new Uint16Array(values);
     let v = new Uint8Array(x.buffer);
     let compbytes = new Uint16Array(lz4.compress(v));
-    compbytes = compbytes.map((v) => {return v + 33});
-    let string = String.fromCharCode(...compbytes)
+    let string = "";
+    compbytes.forEach((v) => string += pchars[v]);
     showCommand(`exported rule w/ string length ${string.length}`);
     return string;
 }
@@ -474,7 +468,7 @@ function exportRule(rule) {
 //Imports rule from unicode string directly into current rule buffer, setting rule to given
 function importRule(string) {
     let compbytes = new Uint8Array(string.length);
-    compbytes = compbytes.map((_, i) => { return string.charCodeAt(i) - 33});
+    compbytes = compbytes.map((_, i) => { return pcharMap[string.charCodeAt(i)]});
     let x = lz4.decompress(compbytes);
     let values = new Uint16Array(x.buffer);
     //Extract values from decompressed values
