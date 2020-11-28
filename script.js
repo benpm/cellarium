@@ -13,8 +13,10 @@ var resourcesRemaining = 0;                 // Number of remaining resources to 
 var flip = false;                           // Framebuffer flip
 var simProgram;                             // The GL shader program for simulation (see simulate.glsl)
 var colorProgram;                           // The GL shader program for colormapping (see colormap.glsl)
+var drawProgram;                            // The GL shader program for drawing (see drawing.glsl)
 var simUniforms;                            // Fragment shader uniform map for simulation shader
 var colorUniforms;                          // Fragment shader uniform map for colormapping shader
+var drawUniforms;                           // Fragment shader uniform map for drawing shader
 var texB;                                   // Framebuffer B GL texture ID
 var texA;                                   // Framebuffer A GL texture ID
 var ruleTex;                                // Cellular automata rule GL texture ID
@@ -43,6 +45,25 @@ var frames = 0;
 var steps = 0;
 var lastFPSSample = Date.now();
 
+// Preset rules
+const presets = {
+    "game of life":        [0,0,0,1,0,0,0,0,0,0,0,1,1,0,0,0,0,0],
+    "[2] worms":           [0,1,0,0,0,1,0,1,1,0,0,0,0,1,1,1,1,1],
+    "[2] hilbert":         [0,1,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1],
+    "[2] tricircuit":      [1,1,1,0,0,0,0,0,1,0,1,1,1,1,1,0,0,1],
+    "[2] sierpinski1":     [0,1,0,0,0,0,0,0,0,0,1,1,0,1,1,1,1,1],
+    "[2] machine":         [0,1,0,0,0,0,0,0,1,1,1,1,1,0,0,0,1,0],
+    "[2] complex maze":    [0,0,0,1,0,0,0,0,0,0,0,1,1,1,1,0,1,0],
+    "[2] sierpinski2":     [1,1,0,0,0,0,0,0,1,1,0,1,1,1,0,1,1,0],
+    "[3] glider city":     `%Cn9a´ģ]!!!ĵ"!#!!"!1!"1!!!#"10!1!"!D"A6!!B!1"I!"1!Ĵ%#!!1#!113!!2!!2!!A!!!!!`,
+    "[4] complex gliders": `%Cn9a´ģQ"!!ĵG!!$!"A$!!!A!!C!#AQ"A1Q!TQQ4$Q1$14##!1C!!!#T4#!A1!!1#!"!!U!ĵ,!AA!!!QD"!RAR11Q##2!!!1$QTv!ĤQ!Q!3A1!Q##!!QW!b31Q!a!ÄRR#!1T!T7!!U!A!3'!£R!1!11t!BA!£!QQ$CÝ!!ê!Q!"QÄ!Ĵ+#1#$!!D"$!1"$Q##!""3#!$$!8!Ķ#$$C2!QSR!!!"$!!$R^!B"!b!!M!!*!Ĵ&$1$#"4!#!"!$QA!"#$$$¹!Ķ$!$!C!"!Q$3A$!A#!QCð!´CT!A"AQü!bQQ2BÝ!1$R"Ĕ"1!DA!C#QQ"!C!!!!`,
+    "[4] matrix":          `%Cn9a´ģW"!!1!"!Ĵ6D!""!A!!T!RSA#!!4"S!Q!!C!!!A!B$4A!"QI!Ĵ>1"!"!"$C!Q1$!!S1AS1!D!"33!!"!S!!!$!"!!#D!"Q4.!Ĵ$AQ1!!TS$!#!"$!1"!1J!b!1Q"o!Ĵ%AAQA"!!S!#3#$AQAQ$"W!!º!Ĵ&QS!!C"11!!#QRA!$$1!!b!ÄA$!!14!$ã!QQ!!j!ą#!!A#1D!"#B19!rA!A!$¤!ABBĚ!´2$!#R4C|!!â!!ì!!z!A!1ñ!A!Ql!Ä!$T32!A$Y!a$Q!#ď!Ĵ$SQ!"4"1Q!Q$!!"A1#3/"Ä!!QQS!##^!!ä!ä2A$!!B!!"#!!!!`,
+    "[5] city lights":     `%Cn9a´ģ{%!!Ĵ+!!!!ac!1a1A$!$"#T#!!!A"!d:!Ĵ"Q"!!5!!!CQ1$"b%Q5!Ĵ3#T!A!!ba!A11!DA$!#%#Q!Qa#!!$A!#$!b!ô!!%!QDA!!A%U!Q!!$V!Ĵ)!1QT!a%S!#B!!!1!!211#!!x!1"H!Ĥa!Q$AaA!%A!11a4!Ĵ&a"!"!QU!$!!Q1%!2"!a!¤!Ĥ"#B!"A!aQ!!Q5%c!Ĕa!#aa4d!T""!bn!£###QAS+!Ôe"#!a!aA2Ð!1#s!Ĵ'1#Q!Aa5!!a!AdA1!$$%!QË!!Ó!Q$Q1r!Ĵ&R!1%!!b"!Q1A!"a!!$QdÂ!A!$ķ!Ķ!C"!%!!1Q%!!5""Qĸ!Ä1"#!%"Qe¹!"%!£AQ!A!DŁ!Ĵ"D!#"S!a!BR!S!#!#ł!Q!C1G!qTQ"1aę!Ĵ.%!2A#!a#1A!a!"!!$"U%$1!!%$14J!1AP!Aa!ú!qS!d$37"Ä!!%%!1QSö!B$!U"a!Q!UP!R!!3(!AQ!L"Õ%a1!!1#T!a"Äa%$!TU!RB!A"A®"ĵ($$$A!!11#A1QRA!"#EA#!#¼!ô!%!B1Q!#%B#ĕ"AS%ä!Ć2!A$##A!!U%QÜ"ô"1"#Q##1%%S¢!!ĵ"rE!!1aÓ"1C®!!¿!Q1"1(!!0!q$!!%RQ#ä%!!%24"#"UV!ĄU$5!E%A#S!!Aě!q"41#CU!QASQ(!A#"ô!"-"AAA2!q%5!5#Ŀ!A$"í"Ô$$!!!A#!1Ĕ!1"}!Aa%?!1E¸!"%!b##A"È#1SÁ#!P!"8!a!!"Sñ!q%!!Qb«"!Å!q!R1"#Ĝ"A$$¯"Ô!!Ce!1!AQŁ"!ĺ"a$A!Qĩ#1Qć"!K#aeA#AO#a!a1!6$ĥQE"2!1B!!Q$$1!É!£1!"#2#b#!Ö#ÔQ!%1a1Q!3>!´C#"Ua!!G"1#đ!A#%º$110#µ#!$e"!#,!aA"1a¡$q!Aa1aÚ#1#ŀ"£%!!#R"Í!a!B!%Ð$´Q!C!1"A2$´#b!5%!"½#aa##c|"¤"!T"%e4!Ä5Qa!A"1$&$1!Ø"1"8"ÄQ!adA$$1ı#!;!Q"$$ĩ$1TÁ"A!a×$Ĵ$""Q$d1AQQ1cb1!R!e1Y!1!ö#ĵ#cU5T!a!%$#!Ab%#!$7"1!Į#1$Ê!!Ķ!Ĵ7AQdQD!!Qa!!aE!aA!A"AQaC#dQ#!%S#1!BQa%N!#û#1$Ł!"ã%B!!Ā"!ü"Ĵ&%Q""#53$!%d%5d!S!a#"!!!!`,
+    "[5] circuit city":    `%Cn9a´ģ©%!!a!QQ!"!a31aS)!Ĵ8#a!!%Q#%!!"!AD"Q!!1#!a!UR#!Aa%!!#"!5$UK!ĕ!!E!a"Aa%b%%Q=!q"!a!A<!ĵN$%!!!TD%QQ!QS"!$!"!"!1a#1$a$!!aT!!!caQ!"!!!$!1S"%#!b1!!ab%!ad!ca$UAÜ!1A·!!p!Å!"!$2!11¥!ôQ!!Ua$a1#$"Ą!A#!ó!b!bBAü!Ĵ%!!A1A%Aa!#b#!!Qa!2!n!¤#Aa!!1y!Ĵ)1%"QD#"a$#"!a1A!!!DA!"CÀ!Ĵ/cU"!S$R!!"QA!!%!A!$!!!A""Q$R1h!AR!Ç!ôe#!1!a"!#!$ø!aR!1!î!!ė!ä!a!Q!A1$$!)"Ĵ51$Q!#!BA!4!!$aA%""a"4#e#!U!$"!%Q!#cP!Ĵ"!3Q%!$Aa$!cB!T!S¾"ĄQ!$%AA!D!aA4É!å!!#%!"ad$3/!qS%1!"I!aa!"!D"1Ač!£!$A#!3¶"Q%13Ñ"Q5!%Ń!Ä%!#e!1$a4!Ĵ"1!d!Qa$%!"cA1"!!6!acQ3!ĕ!Q%1!Đ!QC!!ë"1Ut!c1%#QF!£!5R%%!³"1QY!q!!U1"O!ĔA!#!"%!"AA41"á!B1eG!#]"!·!!?"£A2!$!1}"A4!ľ"!}#!ü!1!~!!a"Ä4!URQ!"dR!£1%A!!QJ!å!!ea#!"Aa1Ī"">!Ķ$!A!AbA"!EAR!!aa""Tû!ö!A$1!!S!QDA2!22ġ!´!1Qa!C"Ġ!A$Sè"Q"2!B!£%$1%QA|#14ę!´!U!A!S!q"r2!!!5æ#Ĵ9e"C"C!#Q!%!U#"!dd!%!T!b%!"b#!A$!$BT$#!#1#R!Q"T!1#«#´eDc$$!#Þ""Q$RQ%$¹!Q$!$s$qQ51#%>!Q!!AÀ!!_"1"í"Ĵ&AB$!$d!U3%#$Q!"#2RQa¼#b!A"A¿#q"2!"Q{"qDAa%%Å#´BdR%!Acã#1"E"1"K"Ĵ*B!%5!!B!Aa"b%aA!!1"$AaB$é$!$"Ą2%!%"Ac2a#TEĺ$ĤQ1"%"!#B!%SQ!!Ė!1$<#ĔQ!!%#$#aT#!d#é"´$#"3!##ą"´Q%!c!!B¦$!/$Ô!1#QQ!Be4Q$ĵ!%!###%!RSR!!!41þ!Ĥa#!bCa!#a!dD#CĻ"Ĵ!Q#B#A$#!!"Q#!!cĚ!1Q{!Q1Q1µ"ä#1Q12S!#aCµ!ôa!!D$!!4!E!ß!Ĵ-1"#!!E"1!#%aaA!c!T!a"!!#TE$!!!!`,
+    "[5] chaosbox":        '%Cn9a´ģ¥%!!Ĵ)!!!Q!3#bC!$!!A1!#!S#AA!/!ĵ)RAd!!1!T!c!B!!DQ%A"!%!!%!Ĵ$!!QADQ#!1T1Q!!AQ!#%!Ô5"!Qa$%#Av!Ĵ!"!!!!Aa1!!$#!#bX!ĔS#aAQ1!S!!%a$@!£"!51Q#+!ĄA%!QQ#A"A$$$Î!"¬!Ĕa!c#A!A"1!!1TÐ!1aL!"&!Ĵ8!"$C!a!#1!!Q5A!$%C!A"!!5Q!"!!a!!$"!#!bP!ħ#Q!"%B1T3!B!""9!´D!A#!!3u!Q#!AH!R!!#Z!´!!!$%"!`!£!!U!AE2!"w!ôAa!Aa!"Q!5AN!R$!cZ!RA%!¸!Å1A#!$a!Qs"q!!!CA,!ÖD1S!!!UU5§!õ!T%$"S!#A"aj"Ôa$51R!Q2$ħ!ĵ,!D1!"!A%%QA%%3"!!"#Q$"e2TQr"õ!!!#"!aQd#1½!Ė1#!A%$!a!"c!B½!Ĵ"AQ5$!#!"#$S!!c!5ċ"!Ĝ!ĵ"!"%A!%1$$1!1!$4#5!bU4!!|"B3!ľ!aa!2!Ē"ôQ"$R1!!"A%%ß"ĵ("!!11!Q%!4!1A!%!"cD#!%É"qR$$3"ģ"£!CA$%1Ă!Ĵ9"a!$B!!!E!1%!%Q!Q!Aa%#a"5B##$Q1$C!!##Q%¤#Ĵ*aAa"1!#"A!#!#Q!U#%A!!4a!ą!q!!51!Õ#Ab%à!aa!4!ø!Ĵ+"3$4A!Q2!A""!%S$!%RA!a!aD>!!³"r$U$!Q¾#"´"å1!$c3$Q"!1Ğ!£##!Q!2ě"Q1!$Ö"1%Ĭ!!Ð!ĵ"!Qb!aEA"Aa!aAS1Tģ!´e!bQ!%#î#!Ó##¹"ä1A!Q1!ab!RÁ#qQA!Q%B!1Rē"aQ1!!Ï!ä%#"!"$!Sd#*$1#g"A!%é#q#$RB"|#Ĵ#QE2!$aQ!C!SAd"a%5N#ĄB!A!aA!ca"A!Ù#Ĵ!""1!1aaA#!!%2Q$ÿ"õAa##SS%!!QRĥ!a!!T!?#2B§!Ä"A#R#!a2R!1cN#Ĵ"!EQ51E"Q!AEU#$b!T#1"Ĺ!3aF"bC$!$ě!ÄUeaA!%eAă#ôQCU!!%"QU#!+%!¦$´!!Qe!4a$%AQC="a1"#%ğ$aQQ!1Ĥ!a%Q#!õ"a%!bTu#Ĥ"DE!AA3!!S!Q#"s%AEaä"Ĥa!%Q%1a$!3!1b$Õ$!/"!ĺ!Ä1a!!e#Q"ă"q%%!SSĶ$q%%""!f#1!Ģ$£"1$!%cļ!1$À!r!S#!!m#Ĵ#41"c#a$1!"A!$!$!!!!!!',
+    "[5] metastable":      `%Cn9a´ģY"!!ĵ9!!A!RA"A!!!#!"!#!C1B!A!!$!!11!!1!!!D!!Q$!£#$!T!34!!6!£#A!R!Q#!£#!C!!CM!Ĵ.11ADQQA"!1!S1R"!32#A!1QQ!!!"Y!Ô$!#!!Q#R#}!ĔAQ!AT!!"4!R41¶!1A¹!aT1#17!q"!!Q2Î!B"CÁ!!Ö!Ĥ!!"$A!#$3!##!CO!ĴAS!"!TQ#!!"!!!R##T!QTQ!"!QQ!1#T!!4BAR""Q!AC!!1TQI!Ĥ#A""$"#1!!Q1!!S!´A#!$!"1&"a1"Q"ĺ!a3$A!2"£$!!$"4!"Ĕ!#!1!A$$C!"QBÄ!Ĵ"!"#S$""!2!!T!TQ1!!!!`,
+    "[3] chaotic growth":  `%Cn9a´ģc!!!Ķ(#!!#!!!A!#!A#A1A"A##""1!1!:!Ĥ""!C!1C13!#"AAG!Ĵ#!!AC#2"A1B1#C!!A!!!!!`,
+};
 // Simulation parameters for datgui
 const parameters = {
     clear: clear,
@@ -71,7 +92,7 @@ const parameters = {
         let data = new Uint8Array(simSize * simSize);
         let i = (simSize * (simSize / 2));
         data[i] = parameters.penState;
-        webGlSetup(data);
+        texSetup(data);
         showCommand("germinated");
     },
     fillRandom: () => {
@@ -81,7 +102,7 @@ const parameters = {
         for (let i = 0; i < data.length; i++) {
             data[i] = Math.floor(Math.random() * nStates);
         }
-        webGlSetup(data);
+        texSetup(data);
         showCommand(`filled ${simSize * simSize} cells with random states`);
     },
     import: () => {
@@ -100,36 +121,7 @@ const parameters = {
     nStates: 2,
     simsize: simSize,
     stepsPerFrame: 1,
-    preset: "gol"
-};
-// Preset rules
-const presets = {
-    gol:           [0,0,0,1,0,0,0,0,0,
-                       0,0,1,1,0,0,0,0,0],
-    _2_worms:         [0,1,0,0,0,1,0,1,1,
-                       0,0,0,0,1,1,1,1,1],
-    _2_maze:          [1,1,0,1,0,0,0,0,1,
-                       1,0,1,1,1,0,1,1,0],
-    _2_hilbert:       [0,1,0,0,0,0,0,0,0,
-                       0,1,1,1,1,1,1,1,1],
-    _2_stars:         [0,0,1,1,0,0,1,1,0,
-                       0,0,1,1,0,1,1,1,1],
-    _2_nicetiles:     [1,1,1,0,0,0,0,0,1,
-                       0,1,1,1,0,1,0,0,1],
-    _2_tricircuit:    [1,1,1,0,0,0,0,0,1,
-                       0,1,1,1,1,1,0,0,1],
-    _2_sierpinski1:   [0,1,0,0,0,0,0,0,0,
-                       0,1,1,0,1,1,1,1,1],
-    _2_machine:       [0,1,0,0,0,0,0,0,1,
-                       1,1,1,1,0,0,0,1,0],
-    _2_complexmaze:   [0,0,0,1,0,0,0,0,0,
-                       0,0,1,1,1,1,0,1,0],
-    _2_sierpinski2:   [1,1,0,0,0,0,0,0,1,
-                       1,0,1,1,1,0,1,1,0],
-    _3_glidercity:     `%Cn9a´ģ]!!!ĵ"!#!!"!1!"1!!!#"10!1!"!D"A6!!B!1"I!"1!Ĵ%#!!1#!113!!2!!2!!A!!!!!`,
-    _4_complexgliders: `%Cn9a´ģQ"!!ĵG!!$!"A$!!!A!!C!#AQ"A1Q!TQQ4$Q1$14##!1C!!!#T4#!A1!!1#!"!!U!ĵ,!AA!!!QD"!RAR11Q##2!!!1$QTv!ĤQ!Q!3A1!Q##!!QW!b31Q!a!ÄRR#!1T!T7!!U!A!3'!£R!1!11t!BA!£!QQ$CÝ!!ê!Q!"QÄ!Ĵ+#1#$!!D"$!1"$Q##!""3#!$$!8!Ķ#$$C2!QSR!!!"$!!$R^!B"!b!!M!!*!Ĵ&$1$#"4!#!"!$QA!"#$$$¹!Ķ$!$!C!"!Q$3A$!A#!QCð!´CT!A"AQü!bQQ2BÝ!1$R"Ĕ"1!DA!C#QQ"!C!!!!`,
-    _4_matrix:         `%Cn9a´ģW"!!1!"!Ĵ6D!""!A!!T!RSA#!!4"S!Q!!C!!!A!B$4A!"QI!Ĵ>1"!"!"$C!Q1$!!S1AS1!D!"33!!"!S!!!$!"!!#D!"Q4.!Ĵ$AQ1!!TS$!#!"$!1"!1J!b!1Q"o!Ĵ%AAQA"!!S!#3#$AQAQ$"W!!º!Ĵ&QS!!C"11!!#QRA!$$1!!b!ÄA$!!14!$ã!QQ!!j!ą#!!A#1D!"#B19!rA!A!$¤!ABBĚ!´2$!#R4C|!!â!!ì!!z!A!1ñ!A!Ql!Ä!$T32!A$Y!a$Q!#ď!Ĵ$SQ!"4"1Q!Q$!!"A1#3/"Ä!!QQS!##^!!ä!ä2A$!!B!!"#!!!!`,
-    _5_citylights:     `%Cn9a´ģ{%!!Ĵ+!!!!ac!1a1A$!$"#T#!!!A"!d:!Ĵ"Q"!!5!!!CQ1$"b%Q5!Ĵ3#T!A!!ba!A11!DA$!#%#Q!Qa#!!$A!#$!b!ô!!%!QDA!!A%U!Q!!$V!Ĵ)!1QT!a%S!#B!!!1!!211#!!x!1"H!Ĥa!Q$AaA!%A!11a4!Ĵ&a"!"!QU!$!!Q1%!2"!a!¤!Ĥ"#B!"A!aQ!!Q5%c!Ĕa!#aa4d!T""!bn!£###QAS+!Ôe"#!a!aA2Ð!1#s!Ĵ'1#Q!Aa5!!a!AdA1!$$%!QË!!Ó!Q$Q1r!Ĵ&R!1%!!b"!Q1A!"a!!$QdÂ!A!$ķ!Ķ!C"!%!!1Q%!!5""Qĸ!Ä1"#!%"Qe¹!"%!£AQ!A!DŁ!Ĵ"D!#"S!a!BR!S!#!#ł!Q!C1G!qTQ"1aę!Ĵ.%!2A#!a#1A!a!"!!$"U%$1!!%$14J!1AP!Aa!ú!qS!d$37"Ä!!%%!1QSö!B$!U"a!Q!UP!R!!3(!AQ!L"Õ%a1!!1#T!a"Äa%$!TU!RB!A"A®"ĵ($$$A!!11#A1QRA!"#EA#!#¼!ô!%!B1Q!#%B#ĕ"AS%ä!Ć2!A$##A!!U%QÜ"ô"1"#Q##1%%S¢!!ĵ"rE!!1aÓ"1C®!!¿!Q1"1(!!0!q$!!%RQ#ä%!!%24"#"UV!ĄU$5!E%A#S!!Aě!q"41#CU!QASQ(!A#"ô!"-"AAA2!q%5!5#Ŀ!A$"í"Ô$$!!!A#!1Ĕ!1"}!Aa%?!1E¸!"%!b##A"È#1SÁ#!P!"8!a!!"Sñ!q%!!Qb«"!Å!q!R1"#Ĝ"A$$¯"Ô!!Ce!1!AQŁ"!ĺ"a$A!Qĩ#1Qć"!K#aeA#AO#a!a1!6$ĥQE"2!1B!!Q$$1!É!£1!"#2#b#!Ö#ÔQ!%1a1Q!3>!´C#"Ua!!G"1#đ!A#%º$110#µ#!$e"!#,!aA"1a¡$q!Aa1aÚ#1#ŀ"£%!!#R"Í!a!B!%Ð$´Q!C!1"A2$´#b!5%!"½#aa##c|"¤"!T"%e4!Ä5Qa!A"1$&$1!Ø"1"8"ÄQ!adA$$1ı#!;!Q"$$ĩ$1TÁ"A!a×$Ĵ$""Q$d1AQQ1cb1!R!e1Y!1!ö#ĵ#cU5T!a!%$#!Ab%#!$7"1!Į#1$Ê!!Ķ!Ĵ7AQdQD!!Qa!!aE!aA!A"AQaC#dQ#!%S#1!BQa%N!#û#1$Ł!"ã%B!!Ā"!ü"Ĵ&%Q""#53$!%d%5d!S!a#"!!!!`,
+    preset: Object.keys(presets)[0]
 };
 // Mapping from rule length to number of states
 var nStateMap = {};
@@ -168,18 +160,28 @@ function fmod(a, b) {
 }
 
 function mouseHandler(e) {
-    simUniforms.mouse.val[0] = (fmod((cam.x + Math.floor(e.pageX) / cam.zoom), simSize) / simSize);
-    simUniforms.mouse.val[1] = (fmod((cam.y + Math.floor(e.pageY) / cam.zoom), simSize) / simSize);
+    drawUniforms.mouse.val[0] = (Math.floor(fmod((cam.x + Math.floor(e.pageX - 2) / cam.zoom), simSize)) / simSize);
+    drawUniforms.mouse.val[1] = (Math.floor(fmod((cam.y + Math.floor(e.pageY - 2) / cam.zoom), simSize)) / simSize);
+    colorUniforms.mouse.val[0] = Math.floor(e.pageX);
+    colorUniforms.mouse.val[1] = Math.floor(e.pageY);
     if (cam.panning) {
         cam.x = fmod(cam.panstartcam.x + (cam.panstartmouse.x - e.pageX) / cam.zoom, simSize * 2);
         cam.y = fmod(cam.panstartcam.y + (cam.panstartmouse.y - e.pageY) / cam.zoom, simSize * 2);
     }
+
+    gl.useProgram(drawProgram);
+    gl.uniform4fv(drawUniforms.mouse.loc, drawUniforms.mouse.val);
+
+    gl.useProgram(colorProgram);
+    colorUniforms.mouse.val[2] = parameters.penState;
+    colorUniforms.mouse.val[3] = drawUniforms.mouse.val[3];
+    gl.uniform4fv(colorUniforms.mouse.loc, colorUniforms.mouse.val);
 }
 
 function clickOn(e) {
     switch (e.originalEvent.button) {
         case 0: // Left click
-            simUniforms.mouse.val[2] = parameters.penState;
+            drawUniforms.mouse.val[2] = parameters.penState;
             break;
         case 1: // Middle click
             cam.panning = true;
@@ -190,7 +192,7 @@ function clickOn(e) {
             canvas.style.cursor = "move";
             break;
         case 2: // Right click
-            simUniforms.mouse.val[2] = 0;
+            drawUniforms.mouse.val[2] = 0;
             break;
     }
 }
@@ -199,7 +201,7 @@ function clickOff(e) {
     switch (e.originalEvent.button) {
         case 0: // Left click
         case 2: // Right click
-            simUniforms.mouse.val[2] = -1;
+            drawUniforms.mouse.val[2] = -1;
             break;
         case 1: // Middle click
             cam.panning = false;
@@ -209,12 +211,12 @@ function clickOff(e) {
 }
 
 function onPenSize() {
-    simUniforms.mouse.val[3] = parameters.penSize;
+    drawUniforms.mouse.val[3] = parameters.penSize;
 }
 
 function onScrollWheel(e) {
     let z = cam.zoom;
-    cam.zoom = Math.max(Math.min(cam.zoom + (e.originalEvent.deltaY < 0 ? 1 : -1), 8), 1);
+    cam.zoom = Math.max(Math.min(cam.zoom + (e.originalEvent.deltaY < 0 ? 1 : -1), 32), 1);
     cam.x += canvas.width / (2 * z) - canvas.width / (2 * cam.zoom);
     cam.y += canvas.height / (2 * z) - canvas.height / (2 * cam.zoom);
 }
@@ -286,12 +288,12 @@ function onKeyUp(e) {
 
 //Render to the screen
 function animateScene() {
+    gl.viewport(0, 0, simSize, simSize);
+
     /* Simulation */
     if (!parameters.pause || doStep) {
-        gl.viewport(0, 0, simSize, simSize);
         gl.useProgram(simProgram);
         //Set simUniforms
-        gl.uniform4fv(simUniforms.mouse.loc, simUniforms.mouse.val);
         gl.activeTexture(gl.TEXTURE1);
         gl.bindTexture(gl.TEXTURE_2D, ruleTex);
         gl.activeTexture(gl.TEXTURE2);
@@ -312,6 +314,15 @@ function animateScene() {
         }
     }
 
+    /* Drawing */
+    flip = !flip;
+    gl.useProgram(drawProgram);
+    gl.uniform4fv(drawUniforms.mouse.loc, drawUniforms.mouse.val);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, flip ? fbB : fbA);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, flip ? texA : texB);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+
     /* Colormapping */
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.useProgram(colorProgram);
@@ -319,6 +330,9 @@ function animateScene() {
     cam.x += cam.move.x;
     cam.y += cam.move.y;
     gl.uniform3fv(colorUniforms.cam.loc, [cam.x, cam.y, cam.zoom]);
+    colorUniforms.mouse.val[2] = parameters.penState;
+    colorUniforms.mouse.val[3] = drawUniforms.mouse.val[3];
+    gl.uniform4fv(colorUniforms.mouse.loc, colorUniforms.mouse.val);
     //Colormap and render to canvas
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.activeTexture(gl.TEXTURE0);
@@ -516,8 +530,8 @@ function setnStates(states) {
     }
 }
 
-//Setup for WebGL stuff
-function webGlSetup(data) {
+//Setup simulation textures and framebuffers
+function texSetup(data) {
     //Texture A
     texA = texA || gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texA);
@@ -543,108 +557,120 @@ function webGlSetup(data) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, fbB);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texB, 0);
 
-    //Build simulator shader program
-    if (!simProgram) {
-        const shaderSet = [
-            {type: gl.FRAGMENT_SHADER, name: "simulate"},
-            {type: gl.VERTEX_SHADER, name: "vertex"}
-        ];
-        simProgram = buildShaderProgram(gl, shaderSet);
-        gl.useProgram(simProgram);
-
-        //Build precomputed binomial coefficient texture
-        buildBinomial();
-    
-        //Create vertices for quad
-        let vertexArray = new Float32Array([
-            -1.0, 1.0, 1.0, 1.0, 1.0, -1.0,
-            -1.0, 1.0, 1.0, -1.0, -1.0, -1.0
-        ]);
-        let vertexBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, vertexArray, gl.STATIC_DRAW);
-    
-        //Uniforms
-        simUniforms = {
-            size:       {loc: gl.getUniformLocation(simProgram, "uSize")},
-            sampler:    {loc: gl.getUniformLocation(simProgram, "uSampler")},
-            binomial:   {loc: gl.getUniformLocation(simProgram, "uBinomial")},
-            rule:       {loc: gl.getUniformLocation(simProgram, "uRule")},
-            mouse:      {loc: gl.getUniformLocation(simProgram, "uMouse"), val: [0, 0, -1, 50]},
-            states:     {loc: gl.getUniformLocation(simProgram, "uStates")},
-            subindices: {loc: gl.getUniformLocation(simProgram, "uSubIndices")}
-        };
-    
-        //Attributes
-        let aVertexPosition = gl.getAttribLocation(simProgram, "aVertexPosition");
-        gl.activeTexture(gl.TEXTURE0);
-        gl.vertexAttribPointer(aVertexPosition, 2, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(aVertexPosition);
-
-        //Rule texture
-        setRule(presets[parameters.preset]);
-
-        //Set these uniforms once
-        gl.uniform1i(simUniforms.sampler.loc, 0);
-        gl.uniform1i(simUniforms.rule.loc, 1);
-        gl.uniform1i(simUniforms.binomial.loc, 2);
-    } else {
-        gl.useProgram(simProgram);
-    }
-
+    //Pass new simulation size to shaders
+    gl.useProgram(simProgram);
     gl.uniform2fv(simUniforms.size.loc, [simSize, simSize]);
-
-    // Build colormap shader program
-    if (!colorProgram) {
-        const shaderSet = [
-            {type: gl.FRAGMENT_SHADER, name: "colormap"},
-            {type: gl.VERTEX_SHADER, name: "vertex"}
-        ];
-        colorProgram = buildShaderProgram(gl, shaderSet);
-        gl.useProgram(colorProgram);
-
-        //Color map
-        colorMapTex = gl.createTexture();
-        gl.bindTexture(gl.TEXTURE_2D, colorMapTex);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, 14, 1, 0, gl.RGB, gl.UNSIGNED_BYTE, colorMap);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, blending);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, blending);
-    
-        //Create vertices for quad
-        let vertexArray = new Float32Array([
-            -1.0, 1.0, 1.0, 1.0, 1.0, -1.0,
-            -1.0, 1.0, 1.0, -1.0, -1.0, -1.0
-        ]);
-        let vertexBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, vertexArray, gl.STATIC_DRAW);
-    
-        //Uniforms
-        colorUniforms = {
-            sampler:    {loc: gl.getUniformLocation(colorProgram, "uSampler")},
-            colormap:   {loc: gl.getUniformLocation(colorProgram, "uColorMap")},
-            cam:        {loc: gl.getUniformLocation(colorProgram, "uCam")},
-            screen:     {loc: gl.getUniformLocation(colorProgram, "uScreen")},
-            simSize:    {loc: gl.getUniformLocation(colorProgram, "uSimSize")},
-        };
-    
-        //Attributes
-        let aVertexPosition = gl.getAttribLocation(colorProgram, "aVertexPosition");
-        gl.activeTexture(gl.TEXTURE0);
-        gl.vertexAttribPointer(aVertexPosition, 2, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(aVertexPosition);
-
-        //Set these uniforms once
-        gl.uniform1i(colorUniforms.sampler.loc, 0);
-        gl.uniform1i(colorUniforms.colormap.loc, 1);
-        gl.uniform2fv(colorUniforms.screen.loc, [canvas.width, canvas.height]);
-    } else {
-        gl.useProgram(colorProgram);
-    }
-
+    gl.useProgram(colorProgram);
     gl.uniform2fv(colorUniforms.simSize.loc, [simSize, simSize]);
+    gl.useProgram(drawProgram);
+    gl.uniform2fv(drawUniforms.size.loc, [simSize, simSize]);
+}
+
+//Setup for WebGL stuff
+function webGlSetup() {
+    //Create vertices for quad
+    let vertexArray = new Float32Array([
+        -1.0, 1.0, 1.0, 1.0, 1.0, -1.0,
+        -1.0, 1.0, 1.0, -1.0, -1.0, -1.0
+    ]);
+    let vertexBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, vertexArray, gl.STATIC_DRAW);
+
+    //Build simulator shader program
+    simProgram = buildShaderProgram(gl, [
+        {type: gl.FRAGMENT_SHADER, name: "simulate"},
+        {type: gl.VERTEX_SHADER, name: "vertex"}
+    ]);
+    gl.useProgram(simProgram);
+
+    //Build precomputed binomial coefficient texture
+    buildBinomial();
+
+    //Simulation uniforms
+    simUniforms = {
+        size:       {loc: gl.getUniformLocation(simProgram, "uSize")},
+        sampler:    {loc: gl.getUniformLocation(simProgram, "uSampler")},
+        binomial:   {loc: gl.getUniformLocation(simProgram, "uBinomial")},
+        rule:       {loc: gl.getUniformLocation(simProgram, "uRule")},
+        states:     {loc: gl.getUniformLocation(simProgram, "uStates")},
+        subindices: {loc: gl.getUniformLocation(simProgram, "uSubIndices")}
+    };
+
+    //Vertex position attribute
+    let aVertexPosition = gl.getAttribLocation(simProgram, "aVertexPosition");
+    gl.activeTexture(gl.TEXTURE0);
+    gl.vertexAttribPointer(aVertexPosition, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(aVertexPosition);
+
+    //Rule texture
+    setRule(presets[parameters.preset]);
+
+    //Initialize uniforms
+    gl.uniform1i(simUniforms.sampler.loc, 0);
+    gl.uniform1i(simUniforms.rule.loc, 1);
+    gl.uniform1i(simUniforms.binomial.loc, 2);
+
+    /* COLORMAP SHADER PROGRAM */
+    //Build program
+    colorProgram = buildShaderProgram(gl, [
+        {type: gl.FRAGMENT_SHADER, name: "colormap"},
+        {type: gl.VERTEX_SHADER, name: "vertex"}
+    ]);
+    gl.useProgram(colorProgram);
+
+    //Color map
+    colorMapTex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, colorMapTex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, 14, 1, 0, gl.RGB, gl.UNSIGNED_BYTE, colorMap);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, blending);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, blending);
+
+    //Uniforms
+    colorUniforms = {
+        sampler:    {loc: gl.getUniformLocation(colorProgram, "uSampler")},
+        colormap:   {loc: gl.getUniformLocation(colorProgram, "uColorMap")},
+        cam:        {loc: gl.getUniformLocation(colorProgram, "uCam")},
+        screen:     {loc: gl.getUniformLocation(colorProgram, "uScreen")},
+        simSize:    {loc: gl.getUniformLocation(colorProgram, "uSimSize")},
+        mouse:      {loc: gl.getUniformLocation(colorProgram, "uMouse"), val: [0, 0, -1, 50]},
+    };
+
+    //Vertex position attribute
+    aVertexPosition = gl.getAttribLocation(colorProgram, "aVertexPosition");
+    gl.activeTexture(gl.TEXTURE0);
+    gl.vertexAttribPointer(aVertexPosition, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(aVertexPosition);
+
+    //Set these uniforms once
+    gl.uniform1i(colorUniforms.sampler.loc, 0);
+    gl.uniform1i(colorUniforms.colormap.loc, 1);
+    gl.uniform2fv(colorUniforms.screen.loc, [canvas.width, canvas.height]);
+
+    //Build simulator shader program
+    drawProgram = buildShaderProgram(gl, [
+        {type: gl.FRAGMENT_SHADER, name: "drawing"},
+        {type: gl.VERTEX_SHADER, name: "vertex"}
+    ]);
+    gl.useProgram(drawProgram);
+
+    //Uniforms
+    drawUniforms = {
+        size:       {loc: gl.getUniformLocation(drawProgram, "uSize")},
+        sampler:    {loc: gl.getUniformLocation(drawProgram, "uSampler")},
+        mouse:      {loc: gl.getUniformLocation(drawProgram, "uMouse"), val: [0, 0, -1, 50]},
+    };
+
+    //Vertex position attribute
+    aVertexPosition = gl.getAttribLocation(drawProgram, "aVertexPosition");
+    gl.activeTexture(gl.TEXTURE0);
+    gl.vertexAttribPointer(aVertexPosition, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(aVertexPosition);
+
+    //Set these uniforms once
+    gl.uniform1i(drawUniforms.sampler.loc, 0);
 }
 
 //Main function, is called after all resources are loaded
@@ -659,7 +685,8 @@ function main() {
         nStateMap[ruleLength(i)] = i;
     }
 
-    //Texture data
+    //Initialize WebGL then initialize simulation with random data
+    webGlSetup();
     parameters.fillRandom();
 
     //Handlers
@@ -817,7 +844,7 @@ gui.add(parameters, "simsize",
         gl.readPixels(0, 0, ssize, ssize, gl.RGBA, gl.UNSIGNED_BYTE, slice);
         simSize = v;
         data.set(slice.map((v, i, a) => i < ssize**2 ? a[i * 4] : 0).slice(0, ssize**2));
-        webGlSetup(data);
+        texSetup(data);
     });
 gui.add(parameters, "clear");
 gui.add(parameters, "germinate").name("germinate from center");
@@ -830,3 +857,4 @@ $.get("vertex.glsl", mapResource("vertex"));
 $.get("simulate.glsl", mapResource("simulate"));
 $.get("colormap.glsl", mapResource("colormap"));
 $.get("preview.glsl", mapResource("preview"));
+$.get("drawing.glsl", mapResource("drawing"));

@@ -7,7 +7,6 @@ uniform sampler2D uSampler;     // Input states texture
 uniform sampler2D uRule;        // The cellular automata rule
 uniform sampler2D uBinomial;    // Pre-computed binomial coefficents (n and k up to 32)
 uniform vec2 uSize;             // Size of simulation canvas in pixels
-uniform vec4 uMouse;            // Position of mouse, plus left / right button states
 uniform int uStates;            // Number of states in this rule (MAX 14)
 uniform int uSubIndices;        // Number pf subrule indices
 
@@ -80,27 +79,6 @@ void main(void) {
             (mod(float(ruleIndex), 1024.0) + 0.5) / 1024.0,
             (floor(float(ruleIndex) / 1024.0) + 0.5) / 1024.0
         )).r * 255.0 + 0.5));
-
-    // Calculate toroidal distance to mouse
-    vec2 pixPos = floor(vTextureCoord * uSize);
-    float pMouseDist = min(
-        distance(pixPos, uMouse.xy * uSize),
-        min(
-            min(
-                distance(pixPos, (uMouse.xy - vec2(1.0, 0.0)) * uSize),
-                distance(pixPos, (uMouse.xy - vec2(0.0, 1.0)) * uSize)),
-            min(
-                distance(pixPos, (uMouse.xy + vec2(1.0, 0.0)) * uSize),
-                distance(pixPos, (uMouse.xy + vec2(0.0, 1.0)) * uSize))
-        )
-    );
-
-    // Mouse click adds cells
-    if (floor(pMouseDist) < uMouse.w) {
-        if (uMouse.z > -1.0) {
-            newstate = int(uMouse.z);
-        }
-    }
 
     // Output new state
     gl_FragColor = vec4(vec3(float(newstate) / 255.0), 1.0);
