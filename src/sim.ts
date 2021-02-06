@@ -1,11 +1,5 @@
 import lz4 from "lz4js";
 
-export interface SimConfig {
-    presets?: Record<string, string>;
-    canvas: HTMLCanvasElement;
-    shaders: Record<string, string>;
-}
-
 function factorial(m: number) {
     let n = 1;
     for (let i = 2; i <= m; i++) {
@@ -48,7 +42,6 @@ for (let i = 0; i < pchars.length; i++) {
 }
 
 export class Sim {
-    canvas: HTMLCanvasElement;                  // Canvas being drawn to
     gl: WebGL2RenderingContext;                 // WebGL2 rendering context, passed into constructor
     simProgram?: WebGLProgram;                  // WebGL program for simulating cellular automata
     colorProgram?: WebGLProgram;                // WebGL program for drawing CA state in correct colors
@@ -86,7 +79,6 @@ export class Sim {
         state: 1,
         size: 50
     };
-    presets: Record<string, string>;            // Rule presets as strings
     preset = "game of life";                    // Current rule preset selection
     doStep = false;                             // Indicates that a simulation step should be performed
     pause = false;                              // Simulation is paused
@@ -98,7 +90,8 @@ export class Sim {
     texB?: WebGLTexture;
     steps = 0;                                  // Simulation steps so far
     frames = 0;                                 // Rendered frames so far
-    lastFPSSample = 0;                          // Millisecond timestap of last FPS sample
+    lastFPSSample = Date.now();                 // Millisecond timestap of last FPS sample
+    fps = 0;                                    // Frames per second
     cam = {
         x: 0,
         y: 0,
@@ -109,20 +102,19 @@ export class Sim {
         move: {x:0, y:0}
     };
     
-    constructor(config: SimConfig) {
-        this.canvas = config.canvas;
-        this.gl = this.canvas?.getContext("webgl2")!;
-        this.presets = config.presets || {};
+    constructor(
+        private canvas: HTMLCanvasElement,
+        private presets: Record<string, string>,
+        shaders: Record<string, string>) {
+        this.gl = this.canvas.getContext("webgl2")!;
         this.canvas.width = window.innerWidth;
         this.canvas.height = window.innerHeight;
         for (let i = 2; i <= 14; i++) {
             this.nStateMap.set(ruleLength(i), i);
         }
-        this.webGlSetup(config);
+        this.webGlSetup(shaders);
         this.fillRandom();
-        this.animateScene();
     }
-
     mouseHandler(e: MouseEvent) {
         this.drawUniforms.mouse.val[0] = (Math.floor(fmod((
             this.cam.x + Math.floor(e.pageX - 2) / this.cam.zoom), this.simSize)) / this.simSize);
@@ -201,7 +193,7 @@ export class Sim {
         this.setRule(this.randomRule());
     }
     //Exports rule to unicode string
-    exportRule(rule: Uint8Array) {
+    exportRule(rule: Uint8Array): string {
         console.info(`exporting rule length ${rule.length}`);
         //Treat each value in the rule as a 4-bit slice of a 16-bit number
         const values = [];
@@ -455,9 +447,8 @@ export class Sim {
         //Next frame
         this.frames += 1;
         if (Date.now() - this.lastFPSSample >= 1000) {
+            this.fps = this.frames;
             this.lastFPSSample = Date.now();
-            this.frames = 0;
-            this.steps = 0;
         }
         window.requestAnimationFrame(this.animateScene.bind(this));
     }
@@ -557,7 +548,7 @@ export class Sim {
         this.ruleData.set(rule);
         this.regenRuleTex();
     }
-    webGlSetup(config: SimConfig) {
+    webGlSetup(shaders: Record<string, string>) {
         //Create vertices for quad
         const vertexArray = new Float32Array([
             -1.0, 1.0, 1.0, 1.0, 1.0, -1.0,
@@ -570,8 +561,8 @@ export class Sim {
         /* --- Simulator Shader Program --- */
         //Build simulator shader program
         this.simProgram = this.buildShaderProgram([
-            {type: this.gl.FRAGMENT_SHADER, name: "simulate", code: config.shaders["simulate"]},
-            {type: this.gl.VERTEX_SHADER, name: "vertex", code: config.shaders["vertex"]}
+            {type: this.gl.FRAGMENT_SHADER, name: "simulate", code: shaders["simulate"]},
+            {type: this.gl.VERTEX_SHADER, name: "vertex", code: shaders["vertex"]}
         ])!;
     
         //Simulation uniforms
@@ -603,8 +594,8 @@ export class Sim {
         /* --- Colormap Shader Program --- */
         //Build program
         this.colorProgram = this.buildShaderProgram([
-            {type: this.gl.FRAGMENT_SHADER, name: "colormap", code: config.shaders["colormap"]},
-            {type: this.gl.VERTEX_SHADER, name: "vertex", code: config.shaders["vertex"]}
+            {type: this.gl.FRAGMENT_SHADER, name: "colormap", code: shaders["colormap"]},
+            {type: this.gl.VERTEX_SHADER, name: "vertex", code: shaders["vertex"]}
         ])!;
         this.gl.useProgram(this.colorProgram);
 
@@ -641,8 +632,8 @@ export class Sim {
         /* --- Draw Shader Program --- */
         //Build shader program
         this.drawProgram = this.buildShaderProgram([
-            {type: this.gl.FRAGMENT_SHADER, name: "drawing", code: config.shaders["drawing"]},
-            {type: this.gl.VERTEX_SHADER, name: "vertex", code: config.shaders["vertex"]}
+            {type: this.gl.FRAGMENT_SHADER, name: "drawing", code: shaders["drawing"]},
+            {type: this.gl.VERTEX_SHADER, name: "vertex", code: shaders["vertex"]}
         ])!;
         this.gl.useProgram(this.drawProgram);
     

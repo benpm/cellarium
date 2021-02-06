@@ -16,46 +16,43 @@ const shaders = {
   "vertex": require('../shaders/vertex.glsl').default
 };
 
+const presets = {
+  "[3] glider city": `%Cn9a´ģ]!!!ĵ"!#!!"!1!"1!!!#"10!1!"!D"A6!!B!1"I!"1!Ĵ%#!!1#!113!!2!!2!!A!!!!!`
+};
+
 @Options({
   props: {
   },
   data() {
     return {
       simulator: null,
-      frameRate: String
+      frameRate: ""
     }
   },
   watch: {
-    simulator: function() {
-      if(Date.now() - this.simulator.lastFPSSample >= 1000) {
-        this.frameRate = `${this.simulator.frames} frames/sec per ${this.simulator.steps} steps/sec`
-      }
+    'simulator.fps': function() {
+      console.debug("frameRate changed");
+      this.frameRate = `${this.simulator.frames} frames/sec per ${this.simulator.steps} steps/sec`;
+      this.simulator.frames = 0;
+      this.simulator.steps = 0;
     }
   },
   methods: {
   },
   mounted() {
-    // console.log(this.$refs["glCanvas"])
-    this.simulator = new Sim({canvas: this.$refs["glCanvas"], shaders});
-    window.addEventListener("resize", this.simulator.resize.bind(this.simulator));
+    this.simulator = new Sim(this.$refs["glCanvas"] as HTMLCanvasElement, presets, shaders);
     this.simulator.resize();
+    window.addEventListener("resize", this.simulator.resize.bind(this.simulator));
     window.addEventListener("mousemove", this.simulator.mouseHandler.bind(this.simulator));
     window.addEventListener("mousedown", this.simulator.clickOn.bind(this.simulator));
     window.addEventListener("mouseup", this.simulator.clickOff.bind(this.simulator));
     window.addEventListener("wheel", this.simulator.onScrollWheel.bind(this.simulator));
     window.addEventListener("keydown", this.simulator.onKey.bind(this.simulator));
     window.addEventListener("keyup", this.simulator.onKeyUp.bind(this.simulator));
+    this.simulator.animateScene();
   }
 })
 export default class HelloWorld extends Vue {}
-
-/* 
-import this shit
-put a watcher on lastFPSSample
-  this watcher should change that content if Date.now() - this.lastFPSSample >= 1000
-start executing it 
-*/
-
 </script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
