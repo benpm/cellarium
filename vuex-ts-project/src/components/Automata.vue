@@ -1,7 +1,7 @@
 <template>
   <div class="automataWindow">
-    <p>{{ frameRate }} </p>
     <canvas id="glCanvas" ref="glCanvas"></canvas>
+    <p id="rtinfo">{{ frameRate }} </p>
   </div>
 </template>
 
@@ -37,6 +37,14 @@ const shaders = {
   mounted() {
     // console.log(this.$refs["glCanvas"])
     this.simulator = new Sim({canvas: this.$refs["glCanvas"], shaders});
+    window.addEventListener("resize", this.simulator.resize.bind(this.simulator));
+    this.simulator.resize();
+    window.addEventListener("mousemove", this.simulator.mouseHandler.bind(this.simulator));
+    window.addEventListener("mousedown", this.simulator.clickOn.bind(this.simulator));
+    window.addEventListener("mouseup", this.simulator.clickOff.bind(this.simulator));
+    window.addEventListener("wheel", this.simulator.onScrollWheel.bind(this.simulator));
+    window.addEventListener("keydown", this.simulator.onKey.bind(this.simulator));
+    window.addEventListener("keyup", this.simulator.onKeyUp.bind(this.simulator));
   }
 })
 export default class HelloWorld extends Vue {}
@@ -52,4 +60,54 @@ start executing it
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
+
+  .automataWindow {
+    margin: 0px;
+    padding: 0px;
+    overflow: hidden;
+  }
+
+  #glCanvas {
+    width: 100vw;
+    height: 100vh;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    image-rendering: optimizeSpeed;
+    transform: scaleY(-1);
+  }
+
+  #info {
+    position: absolute;
+    left: 0px;
+    bottom: 0px;
+    background: black;
+    color: white;
+    font-family: Consolas, monospace;
+    padding: 4px;
+    font-size: 12px;
+  }
+
+  #rtinfo {
+    position: absolute;
+    left: 0px;
+    top: 0px;
+    background: black;
+    color: white;
+    font-family: Consolas, monospace;
+    padding: 4px;
+    font-size: 12px;
+    margin: 0px;
+  }
+
+  #viewer-window {
+    position: absolute;
+    bottom: 1px;
+    right: 1px;
+    width: 512px;
+    height: 512px;
+    overflow: hidden;
+    background: magenta;
+    border: white 1px solid;
+  }
 </style>

@@ -1,4 +1,4 @@
-import * as lz4 from "./lz4";
+import lz4 from "lz4js";
 
 export interface SimConfig {
     presets?: Record<string, string>;
@@ -53,11 +53,13 @@ export class Sim {
     simProgram?: WebGLProgram;                  // WebGL program for simulating cellular automata
     colorProgram?: WebGLProgram;                // WebGL program for drawing CA state in correct colors
     drawProgram?: WebGLProgram;                 // WebGL program for drawing CA state in correct colors
-    simUniforms: any;                           // Uniforms for simProgram
+    simUniforms: Record<                        // Uniforms for simProgram
+        string,
+        {loc: WebGLUniformLocation}> = {};
     colorUniforms: any;                         // Uniforms for colorProgram
     drawUniforms: any;                          // Uniforms for colorProgram
     simSize = 1024;                             // Size of simulation texture in pixels
-    ruleData: Uint8Array = new Uint8Array(this.simSize * this.simSize); // Raw bytes of rule data
+    ruleData = new Uint8Array(1024**2);         // Raw bytes of rule data
     ruleTex?: WebGLTexture;                     // WebGL texture containing rule data
     colorMapTex?: WebGLTexture;                 // State to color map texture
     binomialTex?: WebGLTexture;                 // State to binomial map texture
@@ -79,7 +81,7 @@ export class Sim {
     ]);
     nStateMap: Map<number, number> = new Map(); // Mapping from rule length to number of states
     _states = 2;                                // Number of cellular automata states
-    nSubIndices: number = ruleSubIndices(this._states); // Number of subindices in current rule
+    nSubIndices = ruleSubIndices(this._states); // Number of subindices in current rule
     pen = {                                     // Pen properties
         state: 1,
         size: 50
@@ -111,8 +113,14 @@ export class Sim {
         this.canvas = config.canvas;
         this.gl = this.canvas?.getContext("webgl2")!;
         this.presets = config.presets || {};
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+        for (let i = 2; i <= 14; i++) {
+            this.nStateMap.set(ruleLength(i), i);
+        }
         this.webGlSetup(config);
-        window.requestAnimationFrame(this.animateScene.bind(this));
+        this.fillRandom();
+        this.animateScene();
     }
 
     mouseHandler(e: MouseEvent) {
@@ -155,7 +163,6 @@ export class Sim {
                 break;
         }
     }
-    
     clickOff(e: MouseEvent) {
         switch (e.button) {
             case 0: // Left click
@@ -168,11 +175,9 @@ export class Sim {
                 break;
         }
     }
-    
     onPenSize() {
         this.drawUniforms.mouse.val[3] = this.pen.size;
     }
-    
     onScrollWheel(e: WheelEvent) {
         const z = this.cam.zoom;
         this.cam.zoom = Math.max(Math.min(this.cam.zoom + (e.deltaY < 0 ? 1 : -1), 32), 1);
@@ -192,16 +197,14 @@ export class Sim {
         }
         return rule;
     }
-
     newRule() {
         this.setRule(this.randomRule());
     }
-
     //Exports rule to unicode string
     exportRule(rule: Uint8Array) {
         console.info(`exporting rule length ${rule.length}`);
         //Treat each value in the rule as a 4-bit slice of a 16-bit number
-        let values = [];
+        const values = [];
         for (let i = 0; i < rule.length; i += 4) {
             let value = 0;
             for (let j = 0; j < 4 && i + j < rule.length; j++) {
@@ -217,7 +220,6 @@ export class Sim {
         
         return string;
     }
-
     //Imports rule from unicode string directly into current rule buffer, setting rule to given
     importRule(string: string) {
         let compbytes = new Uint8Array(string.length);
@@ -236,7 +238,6 @@ export class Sim {
         this.states = minStates(z)!;
         this.regenRuleTex();
     }
-
     customRule() {
         const string = prompt("input some text:");
         if (string) {
@@ -249,7 +250,6 @@ export class Sim {
             this.setRule(rule);
         }
     }
-
     clear() {
         this.flip = false;
         if (this.fbA && this.fbB) {
@@ -261,7 +261,6 @@ export class Sim {
             this.gl.clear(this.gl.COLOR_BUFFER_BIT);
         }
     }
-
     germinate() {
         // Clear with a single spot in the center
         this.clear();
@@ -289,12 +288,10 @@ export class Sim {
         document.querySelector<HTMLInputElement>("#ruledata")?.select();
         document.execCommand("copy");
     }
-    //Single step
     step() {
         this.pause = true;
         this.doStep = true;
     }
-
     mutate() {
         const length = ruleLength(this.states);
         const nMutate = Math.ceil(length / 20);
@@ -304,7 +301,6 @@ export class Sim {
         }
         this.regenRuleTex();
     }
-    
     onKey(e: KeyboardEvent) {
         const key = e.key;
         switch(key) {
@@ -355,7 +351,6 @@ export class Sim {
                 break;
         }
     }
-    
     onKeyUp(e: KeyboardEvent) {
         const key = e.key;
         switch(key) {
@@ -369,7 +364,6 @@ export class Sim {
                 break;
         }
     }
-    
     texSetup(data: ArrayBufferView) {
         //Texture A
         this.texA = this.texA || this.gl.createTexture()!;
@@ -400,11 +394,10 @@ export class Sim {
         this.gl.useProgram(this.simProgram!);
         this.gl.uniform2fv(this.simUniforms.size.loc, [this.simSize, this.simSize]);
         this.gl.useProgram(this.colorProgram!);
-        this.gl.uniform2fv(this.colorUniforms.this.simSize.loc, [this.simSize, this.simSize]);
+        this.gl.uniform2fv(this.colorUniforms.simSize.loc, [this.simSize, this.simSize]);
         this.gl.useProgram(this.drawProgram!);
         this.gl.uniform2fv(this.drawUniforms.size.loc, [this.simSize, this.simSize]);
     }
-
     animateScene() {
         this.gl.viewport(0, 0, this.simSize, this.simSize);
     
@@ -468,7 +461,6 @@ export class Sim {
         }
         window.requestAnimationFrame(this.animateScene.bind(this));
     }
-
     buildBinomial() {
         console.info("Building binomial coefficient tex...");
         const data = new Uint8Array(32 * 32 * 4);
@@ -491,7 +483,6 @@ export class Sim {
         this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
         this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
     }
-
     compileShader(name: string, code: string, type: number): WebGLShader | null {
         const shader: WebGLShader | null = this.gl.createShader(type);
       
@@ -508,7 +499,6 @@ export class Sim {
       
         return shader;
     }
-    
     buildShaderProgram(shaderInfo: any) {
         const program = this.gl.createProgram();
 
@@ -530,7 +520,6 @@ export class Sim {
     
         return program;
     }
-
     regenRuleTex() {
         //Rule texture
         this.gl.useProgram(this.simProgram!);
@@ -544,7 +533,6 @@ export class Sim {
         this.gl.uniform1i(this.simUniforms.states.loc, this.states);
         this.gl.uniform1i(this.simUniforms.subindices.loc, this.nSubIndices);
     }
-
     set states(states: number) {
         if (states != this._states) {
             if (states >= 2 && states < 14) {
@@ -559,10 +547,9 @@ export class Sim {
             }
         }
     }
-
     setRule(rule: Array<number> | Uint8Array) {
         //Check if rule is valid
-        if (!rule || this.nStateMap.has(rule.length)) {
+        if (!rule || !this.nStateMap.has(rule.length)) {
             console.error("invalid rule:", rule);
             return;
         }
@@ -570,7 +557,6 @@ export class Sim {
         this.ruleData.set(rule);
         this.regenRuleTex();
     }
-    
     webGlSetup(config: SimConfig) {
         //Create vertices for quad
         const vertexArray = new Float32Array([
@@ -581,6 +567,7 @@ export class Sim {
         this.gl.bindBuffer(this.gl.ARRAY_BUFFER, vertexBuffer);
         this.gl.bufferData(this.gl.ARRAY_BUFFER, vertexArray, this.gl.STATIC_DRAW);
     
+        /* --- Simulator Shader Program --- */
         //Build simulator shader program
         this.simProgram = this.buildShaderProgram([
             {type: this.gl.FRAGMENT_SHADER, name: "simulate", code: config.shaders["simulate"]},
@@ -588,97 +575,93 @@ export class Sim {
         ])!;
     
         //Simulation uniforms
-        if (this.simProgram) {
-            this.gl.useProgram(this.simProgram);
-            this.buildBinomial();
-            this.simUniforms = {
-                size:       {loc: this.gl.getUniformLocation(this.simProgram, "uSize")},
-                sampler:    {loc: this.gl.getUniformLocation(this.simProgram, "uSampler")},
-                binomial:   {loc: this.gl.getUniformLocation(this.simProgram, "uBinomial")},
-                rule:       {loc: this.gl.getUniformLocation(this.simProgram, "uRule")},
-                states:     {loc: this.gl.getUniformLocation(this.simProgram, "uStates")},
-                subindices: {loc: this.gl.getUniformLocation(this.simProgram, "uSubIndices")}
-            };
-    
-            //Vertex position attribute
-            let aVertexPosition = this.gl.getAttribLocation(this.simProgram, "aVertexPosition");
-            this.gl.activeTexture(this.gl.TEXTURE0);
-            this.gl.vertexAttribPointer(aVertexPosition, 2, this.gl.FLOAT, false, 0, 0);
-            this.gl.enableVertexAttribArray(aVertexPosition);
-        
-            //Rule texture
-            this.setRule([0,0,0,1,0,0,0,0,0,0,0,1,1,0,0,0,0,0]);
-        
-            //Initialize uniforms
-            this.gl.uniform1i(this.simUniforms.sampler.loc, 0);
-            this.gl.uniform1i(this.simUniforms.rule.loc, 1);
-            this.gl.uniform1i(this.simUniforms.binomial.loc, 2);
-        
-            /* COLORMAP SHADER PROGRAM */
-            //Build program
-            this.colorProgram = this.buildShaderProgram([
-                {type: this.gl.FRAGMENT_SHADER, name: "colormap", code: config.shaders["colormap"]},
-                {type: this.gl.VERTEX_SHADER, name: "vertex", code: config.shaders["vertex"]}
-            ])!;
-            if (this.colorProgram) {
-                this.gl.useProgram(this.colorProgram);
-        
-                //Color map
-                this.colorMapTex = this.gl.createTexture()!;
-                this.gl.bindTexture(this.gl.TEXTURE_2D, this.colorMapTex);
-                this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGB, 14, 1, 0, this.gl.RGB, this.gl.UNSIGNED_BYTE, this.colorMap);
-                this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
-                this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
-                this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
-                this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.NEAREST);
-            
-                //Uniforms
-                this.colorUniforms = {
-                    sampler:    {loc: this.gl.getUniformLocation(this.colorProgram, "uSampler")},
-                    colormap:   {loc: this.gl.getUniformLocation(this.colorProgram, "uColorMap")},
-                    cam:        {loc: this.gl.getUniformLocation(this.colorProgram, "uCam")},
-                    screen:     {loc: this.gl.getUniformLocation(this.colorProgram, "uScreen")},
-                    simSize:    {loc: this.gl.getUniformLocation(this.colorProgram, "uSimSize")},
-                    mouse:      {loc: this.gl.getUniformLocation(this.colorProgram, "uMouse"), val: [0, 0, -1, 50]},
-                };
-            
-                //Vertex position attribute
-                aVertexPosition = this.gl.getAttribLocation(this.colorProgram, "aVertexPosition");
-                this.gl.activeTexture(this.gl.TEXTURE0);
-                this.gl.vertexAttribPointer(aVertexPosition, 2, this.gl.FLOAT, false, 0, 0);
-                this.gl.enableVertexAttribArray(aVertexPosition);
-            
-                //Set these uniforms once
-                this.gl.uniform1i(this.colorUniforms.sampler.loc, 0);
-                this.gl.uniform1i(this.colorUniforms.colormap.loc, 1);
-                this.gl.uniform2fv(this.colorUniforms.screen.loc, [this.canvas.width, this.canvas.height]);
-            }
-        
-            //Build simulator shader program
-            this.drawProgram = this.buildShaderProgram([
-                {type: this.gl.FRAGMENT_SHADER, name: "drawing", code: config.shaders["drawing"]},
-                {type: this.gl.VERTEX_SHADER, name: "vertex", code: config.shaders["vertex"]}
-            ])!;
-            this.gl.useProgram(this.drawProgram);
-        
-            //Uniforms
-            this.drawUniforms = {
-                size:       {loc: this.gl.getUniformLocation(this.drawProgram, "uSize")},
-                sampler:    {loc: this.gl.getUniformLocation(this.drawProgram, "uSampler")},
-                mouse:      {loc: this.gl.getUniformLocation(this.drawProgram, "uMouse"), val: [0, 0, -1, 50]},
-            };
-        
-            //Vertex position attribute
-            aVertexPosition = this.gl.getAttribLocation(this.drawProgram, "aVertexPosition");
-            this.gl.activeTexture(this.gl.TEXTURE0);
-            this.gl.vertexAttribPointer(aVertexPosition, 2, this.gl.FLOAT, false, 0, 0);
-            this.gl.enableVertexAttribArray(aVertexPosition);
-        
-            //Set these uniforms once
-            this.gl.uniform1i(this.drawUniforms.sampler.loc, 0);
-        }
-    }
+        this.gl.useProgram(this.simProgram);
+        this.buildBinomial();
+        this.simUniforms = {
+            size:       {loc: this.gl.getUniformLocation(this.simProgram, "uSize")!},
+            sampler:    {loc: this.gl.getUniformLocation(this.simProgram, "uSampler")!},
+            binomial:   {loc: this.gl.getUniformLocation(this.simProgram, "uBinomial")!},
+            rule:       {loc: this.gl.getUniformLocation(this.simProgram, "uRule")!},
+            states:     {loc: this.gl.getUniformLocation(this.simProgram, "uStates")!},
+            subindices: {loc: this.gl.getUniformLocation(this.simProgram, "uSubIndices")!}
+        };
 
+        //Vertex position attribute
+        let aVertexPosition = this.gl.getAttribLocation(this.simProgram, "aVertexPosition");
+        this.gl.activeTexture(this.gl.TEXTURE0);
+        this.gl.vertexAttribPointer(aVertexPosition, 2, this.gl.FLOAT, false, 0, 0);
+        this.gl.enableVertexAttribArray(aVertexPosition);
+    
+        //Rule texture
+        this.setRule([0,0,0,1,0,0,0,0,0,0,0,1,1,0,0,0,0,0]);
+    
+        //Initialize uniforms
+        this.gl.uniform1i(this.simUniforms.sampler.loc, 0);
+        this.gl.uniform1i(this.simUniforms.rule.loc, 1);
+        this.gl.uniform1i(this.simUniforms.binomial.loc, 2);
+    
+        /* --- Colormap Shader Program --- */
+        //Build program
+        this.colorProgram = this.buildShaderProgram([
+            {type: this.gl.FRAGMENT_SHADER, name: "colormap", code: config.shaders["colormap"]},
+            {type: this.gl.VERTEX_SHADER, name: "vertex", code: config.shaders["vertex"]}
+        ])!;
+        this.gl.useProgram(this.colorProgram);
+
+        //Color map
+        this.colorMapTex = this.gl.createTexture()!;
+        this.gl.bindTexture(this.gl.TEXTURE_2D, this.colorMapTex);
+        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGB, 14, 1, 0, this.gl.RGB, this.gl.UNSIGNED_BYTE, this.colorMap);
+        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
+        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
+        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
+        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.NEAREST);
+    
+        //Uniforms
+        this.colorUniforms = {
+            sampler:    {loc: this.gl.getUniformLocation(this.colorProgram, "uSampler")},
+            colormap:   {loc: this.gl.getUniformLocation(this.colorProgram, "uColorMap")},
+            cam:        {loc: this.gl.getUniformLocation(this.colorProgram, "uCam")},
+            screen:     {loc: this.gl.getUniformLocation(this.colorProgram, "uScreen")},
+            simSize:    {loc: this.gl.getUniformLocation(this.colorProgram, "uSimSize")},
+            mouse:      {loc: this.gl.getUniformLocation(this.colorProgram, "uMouse"), val: [0, 0, -1, 50]},
+        };
+    
+        //Vertex position attribute
+        aVertexPosition = this.gl.getAttribLocation(this.colorProgram, "aVertexPosition");
+        this.gl.activeTexture(this.gl.TEXTURE0);
+        this.gl.vertexAttribPointer(aVertexPosition, 2, this.gl.FLOAT, false, 0, 0);
+        this.gl.enableVertexAttribArray(aVertexPosition);
+    
+        //Set these uniforms once
+        this.gl.uniform1i(this.colorUniforms.sampler.loc, 0);
+        this.gl.uniform1i(this.colorUniforms.colormap.loc, 1);
+        this.gl.uniform2fv(this.colorUniforms.screen.loc, [this.canvas.width, this.canvas.height]);
+    
+        /* --- Draw Shader Program --- */
+        //Build shader program
+        this.drawProgram = this.buildShaderProgram([
+            {type: this.gl.FRAGMENT_SHADER, name: "drawing", code: config.shaders["drawing"]},
+            {type: this.gl.VERTEX_SHADER, name: "vertex", code: config.shaders["vertex"]}
+        ])!;
+        this.gl.useProgram(this.drawProgram);
+    
+        //Uniforms
+        this.drawUniforms = {
+            size:       {loc: this.gl.getUniformLocation(this.drawProgram, "uSize")},
+            sampler:    {loc: this.gl.getUniformLocation(this.drawProgram, "uSampler")},
+            mouse:      {loc: this.gl.getUniformLocation(this.drawProgram, "uMouse"), val: [0, 0, -1, 50]},
+        };
+    
+        //Vertex position attribute
+        aVertexPosition = this.gl.getAttribLocation(this.drawProgram, "aVertexPosition");
+        this.gl.activeTexture(this.gl.TEXTURE0);
+        this.gl.vertexAttribPointer(aVertexPosition, 2, this.gl.FLOAT, false, 0, 0);
+        this.gl.enableVertexAttribArray(aVertexPosition);
+    
+        //Set these uniforms once
+        this.gl.uniform1i(this.drawUniforms.sampler.loc, 0);
+    }
     resize() {
         this.canvas.width = window.innerWidth;
         this.canvas.height = window.innerHeight;
