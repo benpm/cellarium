@@ -1,8 +1,6 @@
 <template>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-  <div>
-    <Automata/>
-  </div>
+  <Automata/>
 </template>
 
 <script lang="ts">

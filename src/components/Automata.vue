@@ -1,10 +1,10 @@
 <template>
-  <div class="grid automataWindow w-screen place-items-center">
-    <div id="ui-container" class="grid justify-center grid-flow-col-dense place-items-center w-1/2 p-2 gap-2">
+  <div class="automataWindow grid items-start justify-center">
+    <div id="ui-container" class="grid overflow-visible justify-center grid-flow-col-dense place-items-center p-2 gap-2">
       <button @click="penSettingsShow = !penSettingsShow">
         <span class="material-icons">edit</span>
         <transition name="fade">
-          <div class="bg-gray-500 rounded dropdown" v-if="penSettingsShow">
+          <div class="rounded dropdown" v-if="penSettingsShow">
             <h1>Pen Settings</h1>
           </div>
         </transition>
@@ -13,7 +13,7 @@
       <button @click="simSettingsShow = !simSettingsShow">
         <span class="material-icons">video_settings</span>
         <transition name="fade">
-          <div class="bg-gray-500 rounded dropdown" v-if="simSettingsShow">
+          <div class="rounded dropdown" v-if="simSettingsShow">
             <h1>Simulation Settings</h1>
           </div>
         </transition>
@@ -23,12 +23,21 @@
         <span v-if="simulator ? simulator.pause : false" class="material-icons">play_arrow</span>
         <span v-if="simulator ? !simulator.pause : true" class="material-icons">pause</span>
       </button>
+
       <button>
-        <span class="material-icons">face</span>
+        <span @click="simulator.step()" class="material-icons">skip_next</span>
+      </button>
+
+      <button>
+        <span @click="simulator.newRule()" class="material-icons">casino</span>
+      </button>
+
+      <button>
+        <span @click="simulator.fillRandom()" class="material-icons">format_color_fill</span>
       </button>
     </div>
     <canvas id="glCanvas" ref="glCanvas"></canvas>
-    <p id="rtinfo">{{ frameRate }} </p>
+    <p id="rtinfo" class="front absolute top-0 left-0 p-1 m-0 text-light bg-dark text-sm">{{ frameRate }} </p>
 
   </div>
 </template>
@@ -108,7 +117,7 @@ export default class HelloWorld extends Vue {}
     overflow: hidden;
     image-rendering: optimizeSpeed;
     transform: scaleY(-1);
-    z-index: -1;
+    z-index: 1;
   }
 
   #info {
@@ -120,19 +129,6 @@ export default class HelloWorld extends Vue {}
     font-family: Consolas, monospace;
     padding: 4px;
     font-size: 12px;
-  }
-
-  #rtinfo {
-    position: absolute;
-    left: 0px;
-    top: 0px;
-    background: black;
-    color: white;
-    font-family: Consolas, monospace;
-    padding: 4px;
-    font-size: 12px;
-    margin: 0px;
-    /* display: none; */
   }
 
   #viewer-window {

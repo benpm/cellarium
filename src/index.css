@@ -2,24 +2,34 @@
 @tailwind components;
 @tailwind utilities;
 
+.front {
+    z-index: 2;
+}
+
 @layer base {
-    button {
-        @apply appearance-none p-1 bg-gray-500 hover:bg-gray-100 font-bold py-1 px-2 h-16 w-16 rounded-full shadow-md;
+    #app, .automataWindow {
+        @apply h-screen w-screen font-mono;
     }
-    button svg, button object {
-        @apply text-gray-700 fill-current;
+    button {
+        @apply front;
+        @apply focus:outline-none overflow-visible relative appearance-none p-1 text-medium bg-dark border-medium border-4 py-1 px-2 h-16 w-16 rounded-full;
+        @apply hover:text-light;
     }
     .dropdown {
-        @apply absolute p-2;
+        @apply bg-dark border-medium border-4 absolute p-2 top-full left-1/2;
     }
     .dropdown h1 {
-        @apply text-lg text-gray-300 font-mono;
+        @apply text-lg text-medium font-mono font-bold;
     }
 }
 
 button .material-icons {
     font-size: 36px;
     vertical-align: middle;
+}
+
+.dropdown {
+    width: 300px;
 }
 
 .fade-enter-active,

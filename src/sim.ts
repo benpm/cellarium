@@ -57,20 +57,20 @@ export class Sim {
     colorMapTex?: WebGLTexture;                 // State to color map texture
     binomialTex?: WebGLTexture;                 // State to binomial map texture
     colorMap = new Uint8Array([                 // Mapping from state to color
-        /* 0  */ 0, 0, 0,
-        /* 1  */ 255, 255, 255,
-        /* 2  */ 255, 50, 50,
-        /* 3  */ 50, 255, 50,
-        /* 4  */ 50, 50, 255,
-        /* 5  */ 255, 255, 50,
-        /* 6  */ 50, 255, 255,
-        /* 7  */ 255, 50, 255,
-        /* 8  */ 255, 50, 175,
-        /* 9  */ 50, 255, 175,
-        /* 10 */ 175, 50, 255,
-        /* 11 */ 255, 255, 175,
-        /* 12 */ 175, 255, 50,
-        /* 13 */ 50, 175, 255
+        /* 0  */ 20, 20, 20,
+        /* 1  */ 220, 220, 220,
+        /* 2  */ 220, 50, 50,
+        /* 3  */ 50, 220, 50,
+        /* 4  */ 50, 50, 220,
+        /* 5  */ 220, 220, 50,
+        /* 6  */ 50, 220, 220,
+        /* 7  */ 220, 50, 220,
+        /* 8  */ 220, 50, 175,
+        /* 9  */ 50, 220, 175,
+        /* 10 */ 175, 50, 220,
+        /* 11 */ 220, 220, 175,
+        /* 12 */ 175, 220, 50,
+        /* 13 */ 50, 175, 220
     ]);
     nStateMap: Map<number, number> = new Map(); // Mapping from rule length to number of states
     _states = 2;                                // Number of cellular automata states
