@@ -1,7 +1,29 @@
 <template>
-  <div class="automataWindow">
+  <div class="grid automataWindow w-screen place-items-center">
+    <div id="ui-container" class="w-1/2">
+      <div class="justify-center space-x-4 p-4">
+        <button @click="penSettingsShow = !penSettingsShow">
+          <svg class="text-black fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zm-2.207 2.207L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/></svg>
+        </button>
+        <button @click="console.debug('boomp')">
+          <svg class="text-black fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zm-2.207 2.207L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/></svg>
+        </button>
+        <button @click="console.debug('boomp')">
+          <svg class="text-black fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zm-2.207 2.207L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/></svg>
+        </button>
+        <button @click="console.debug('boomp')">
+          <svg class="text-black fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zm-2.207 2.207L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/></svg>
+        </button>
+      </div>
+      <transition name="fade">
+        <div class="bg-gray-500 rounded" v-if="penSettingsShow">
+          PEEPEEPOO BOX
+        </div>
+      </transition>
+    </div>
     <canvas id="glCanvas" ref="glCanvas"></canvas>
     <p id="rtinfo">{{ frameRate }} </p>
+
   </div>
 </template>
 
@@ -26,7 +48,8 @@ const presets = {
   data() {
     return {
       simulator: null,
-      frameRate: ""
+      frameRate: "",
+      penSettingsShow: false,
     }
   },
   watch: {
@@ -37,6 +60,9 @@ const presets = {
     }
   },
   methods: {
+    changePenSize() {
+      this.simulator.clear()
+    }
   },
   mounted() {
     this.$refs["glCanvas"].addEventListener("contextmenu", (e: Event) => e.preventDefault());
@@ -65,6 +91,9 @@ export default class HelloWorld extends Vue {}
   }
 
   #glCanvas {
+    position: absolute;
+    top: 0px;
+    left: 0px;
     width: 100vw;
     height: 100vh;
     margin: 0;
@@ -72,6 +101,7 @@ export default class HelloWorld extends Vue {}
     overflow: hidden;
     image-rendering: optimizeSpeed;
     transform: scaleY(-1);
+    z-index: -1;
   }
 
   #info {
@@ -108,4 +138,15 @@ export default class HelloWorld extends Vue {}
     background: magenta;
     border: white 1px solid;
   }
+
+  .fade-enter-active,
+  .fade-leave-active {
+    transition: transform 0.5s ease;
+  }
+
+  .fade-enter-from,
+  .fade-leave-to {
+    transform: scaleY(0);
+  }
+
 </style>

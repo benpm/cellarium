@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    button {
+        @apply p-1 bg-gray-500 hover:bg-gray-100 font-bold py-1 px-2 h-16 w-16 rounded-full shadow-md;
+    }
+}
