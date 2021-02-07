@@ -31,7 +31,6 @@ const presets = {
   },
   watch: {
     'simulator.fps': function() {
-      console.debug("frameRate changed");
       this.frameRate = `${this.simulator.frames} frames/sec per ${this.simulator.steps} steps/sec`;
       this.simulator.frames = 0;
       this.simulator.steps = 0;
@@ -95,6 +94,7 @@ export default class HelloWorld extends Vue {}
     padding: 4px;
     font-size: 12px;
     margin: 0px;
+    display: none;
   }
 
   #viewer-window {

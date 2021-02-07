@@ -120,8 +120,6 @@ export class Sim {
             this.cam.x + Math.floor(e.pageX - 2) / this.cam.zoom), this.simSize)) / this.simSize);
         this.drawUniforms.mouse.val[1] = (Math.floor(fmod((
             this.cam.y + Math.floor(e.pageY - 2) / this.cam.zoom), this.simSize)) / this.simSize);
-        this.colorUniforms.mouse.val[0] = Math.floor(e.pageX);
-        this.colorUniforms.mouse.val[1] = Math.floor(e.pageY);
         if (this.cam.panning) {
             this.cam.x = fmod(this.cam.panstartcam.x + (this.cam.panstartmouse.x - e.pageX)
                 / this.cam.zoom, this.simSize * 2);
@@ -133,6 +131,8 @@ export class Sim {
         this.gl.uniform4fv(this.drawUniforms.mouse.loc, this.drawUniforms.mouse.val);
     
         this.gl.useProgram(this.colorProgram!);
+        this.colorUniforms.mouse.val[0] = Math.floor(e.pageX);
+        this.colorUniforms.mouse.val[1] = Math.floor(e.pageY);
         this.colorUniforms.mouse.val[2] = this.pen.state;
         this.colorUniforms.mouse.val[3] = this.drawUniforms.mouse.val[3];
         this.gl.uniform4fv(this.colorUniforms.mouse.loc, this.colorUniforms.mouse.val);
@@ -538,6 +538,9 @@ export class Sim {
             }
         }
     }
+    get states() {
+        return this._states;
+    }
     setRule(rule: Array<number> | Uint8Array) {
         //Check if rule is valid
         if (!rule || !this.nStateMap.has(rule.length)) {
@@ -654,6 +657,7 @@ export class Sim {
         this.gl.uniform1i(this.drawUniforms.sampler.loc, 0);
     }
     resize() {
+        this.gl.useProgram(this.colorProgram!);
         this.canvas.width = window.innerWidth;
         this.canvas.height = window.innerHeight;
         this.gl.uniform2fv(this.colorUniforms.screen.loc, [this.canvas.width, this.canvas.height]);
