@@ -4,8 +4,13 @@
       <button @click="penSettingsShow = !penSettingsShow">
         <span class="material-icons">edit</span>
         <transition name="fade">
-          <div class="rounded dropdown" v-if="penSettingsShow">
+          <div @click.stop="" class="rounded dropdown" v-if="penSettingsShow">
             <h1>Pen Settings</h1>
+            <div class="value-slider">
+              <span class="material-icons">line_weight</span>
+              <input type="range" name="pen-size" id="pen-size-slider" min="1" max="200" v-model="simulator.pen.size">
+              <span class="label">{{ simulator.pen.size }}</span>
+            </div>
           </div>
         </transition>
       </button>
@@ -24,20 +29,20 @@
         <span v-if="simulator ? !simulator.pause : true" class="material-icons">pause</span>
       </button>
 
-      <button>
-        <span @click="simulator.step()" class="material-icons">skip_next</span>
+      <button @click="simulator.step()">
+        <span class="material-icons">skip_next</span>
       </button>
 
-      <button>
-        <span @click="simulator.newRule()" class="material-icons">casino</span>
+      <button @click="simulator.newRule()">
+        <span class="material-icons">casino</span>
       </button>
 
-      <button>
-        <span @click="simulator.fillRandom()" class="material-icons">format_color_fill</span>
+      <button @click="simulator.fillRandom()">
+        <span class="material-icons">format_color_fill</span>
       </button>
 
-      <button>
-        <span @click="simulator.clear()" class="material-icons">clear</span>
+      <button @click="simulator.clear()">
+        <span class="material-icons">clear</span>
       </button>
     </div>
     <canvas id="glCanvas" ref="glCanvas"></canvas>

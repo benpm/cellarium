@@ -167,9 +167,6 @@ export class Sim {
                 break;
         }
     }
-    onPenSize() {
-        this.drawUniforms.mouse.val[3] = this.pen.size;
-    }
     onScrollWheel(e: WheelEvent) {
         const z = this.cam.zoom;
         this.cam.zoom = Math.max(Math.min(this.cam.zoom + (e.deltaY < 0 ? 1 : -1), 32), 1);
@@ -420,6 +417,7 @@ export class Sim {
         /* Drawing */
         this.flip = !this.flip;
         this.gl.useProgram(this.drawProgram!);
+        this.drawUniforms.mouse.val[3] = this.pen.size;
         this.gl.uniform4fv(this.drawUniforms.mouse.loc, this.drawUniforms.mouse.val);
         this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, (this.flip ? this.fbB : this.fbA)!);
         this.gl.activeTexture(this.gl.TEXTURE0);

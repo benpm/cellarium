@@ -21,7 +21,25 @@
     .dropdown h1 {
         @apply text-lg text-medium font-mono font-bold;
     }
+    .value-slider {
+        @apply bg-transparent flex items-center place-items-center gap-2 text-medium;
+    }
+    .value-slider input[type=range] {
+        @apply appearance-none bg-transparent;
+    }
+    .value-slider input[type=range]::-webkit-slider-thumb,
+    .value-slider input[type=range]::-moz-range-thumb {
+        @apply bg-dark border-medium border-2 rounded-full cursor-pointer;
+    }
+    .value-slider input[type=range]::-webkit-slider-runnable-track,
+    .value-slider input[type=range]::-moz-range-track {
+        @apply h-1 cursor-pointer bg-black border-2 border-black;
+    }
+    .value-slider .label {
+        @apply font-bold;
+    }
 }
+
 
 button .material-icons {
     font-size: 36px;
