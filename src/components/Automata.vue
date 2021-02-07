@@ -8,7 +8,7 @@
 <script lang="ts">
 import { Options, Vue } from 'vue-class-component';
 import { Sim } from '../sim'
-// import colormap_code from '!raw!../shaders/colormap.glsl';
+
 const shaders = {
   "colormap": require('../shaders/colormap.glsl').default,
   "drawing": require('../shaders/drawing.glsl').default,
@@ -39,6 +39,7 @@ const presets = {
   methods: {
   },
   mounted() {
+    this.$refs["glCanvas"].addEventListener("contextmenu", (e: Event) => e.preventDefault());
     this.simulator = new Sim(this.$refs["glCanvas"] as HTMLCanvasElement, presets, shaders);
     this.simulator.resize();
     window.addEventListener("resize", this.simulator.resize.bind(this.simulator));
@@ -94,7 +95,7 @@ export default class HelloWorld extends Vue {}
     padding: 4px;
     font-size: 12px;
     margin: 0px;
-    display: none;
+    /* display: none; */
   }
 
   #viewer-window {
