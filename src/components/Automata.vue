@@ -1,25 +1,31 @@
 <template>
   <div class="grid automataWindow w-screen place-items-center">
-    <div id="ui-container" class="w-1/2">
-      <div class="justify-center space-x-4 p-4">
-        <button @click="penSettingsShow = !penSettingsShow">
-          <svg class="text-black fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zm-2.207 2.207L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/></svg>
-        </button>
-        <button @click="console.debug('boomp')">
-          <svg class="text-black fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zm-2.207 2.207L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/></svg>
-        </button>
-        <button @click="console.debug('boomp')">
-          <svg class="text-black fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zm-2.207 2.207L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/></svg>
-        </button>
-        <button @click="console.debug('boomp')">
-          <svg class="text-black fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zm-2.207 2.207L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/></svg>
-        </button>
-      </div>
-      <transition name="fade">
-        <div class="bg-gray-500 rounded" v-if="penSettingsShow">
-          PEEPEEPOO BOX
-        </div>
-      </transition>
+    <div id="ui-container" class="grid justify-center grid-flow-col-dense place-items-center w-1/2 p-2 gap-2">
+      <button @click="penSettingsShow = !penSettingsShow">
+        <span class="material-icons">edit</span>
+        <transition name="fade">
+          <div class="bg-gray-500 rounded dropdown" v-if="penSettingsShow">
+            <h1>Pen Settings</h1>
+          </div>
+        </transition>
+      </button>
+
+      <button @click="simSettingsShow = !simSettingsShow">
+        <span class="material-icons">video_settings</span>
+        <transition name="fade">
+          <div class="bg-gray-500 rounded dropdown" v-if="simSettingsShow">
+            <h1>Simulation Settings</h1>
+          </div>
+        </transition>
+      </button>
+
+      <button @click="simulator.pause = !simulator.pause">
+        <span v-if="simulator ? simulator.pause : false" class="material-icons">play_arrow</span>
+        <span v-if="simulator ? !simulator.pause : true" class="material-icons">pause</span>
+      </button>
+      <button>
+        <span class="material-icons">face</span>
+      </button>
     </div>
     <canvas id="glCanvas" ref="glCanvas"></canvas>
     <p id="rtinfo">{{ frameRate }} </p>
@@ -50,6 +56,7 @@ const presets = {
       simulator: null,
       frameRate: "",
       penSettingsShow: false,
+      simSettingsShow: false,
     }
   },
   watch: {
@@ -70,8 +77,8 @@ const presets = {
     this.simulator.resize();
     window.addEventListener("resize", this.simulator.resize.bind(this.simulator));
     window.addEventListener("mousemove", this.simulator.mouseHandler.bind(this.simulator));
-    window.addEventListener("mousedown", this.simulator.clickOn.bind(this.simulator));
-    window.addEventListener("mouseup", this.simulator.clickOff.bind(this.simulator));
+    this.$refs["glCanvas"].addEventListener("mousedown", this.simulator.clickOn.bind(this.simulator));
+    this.$refs["glCanvas"].addEventListener("mouseup", this.simulator.clickOff.bind(this.simulator));
     window.addEventListener("wheel", this.simulator.onScrollWheel.bind(this.simulator));
     window.addEventListener("keydown", this.simulator.onKey.bind(this.simulator));
     window.addEventListener("keyup", this.simulator.onKeyUp.bind(this.simulator));
@@ -137,16 +144,6 @@ export default class HelloWorld extends Vue {}
     overflow: hidden;
     background: magenta;
     border: white 1px solid;
-  }
-
-  .fade-enter-active,
-  .fade-leave-active {
-    transition: transform 0.5s ease;
-  }
-
-  .fade-enter-from,
-  .fade-leave-to {
-    transform: scaleY(0);
   }
 
 </style>

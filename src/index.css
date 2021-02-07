@@ -4,6 +4,33 @@
 
 @layer base {
     button {
-        @apply p-1 bg-gray-500 hover:bg-gray-100 font-bold py-1 px-2 h-16 w-16 rounded-full shadow-md;
+        @apply appearance-none p-1 bg-gray-500 hover:bg-gray-100 font-bold py-1 px-2 h-16 w-16 rounded-full shadow-md;
     }
+    button svg, button object {
+        @apply text-gray-700 fill-current;
+    }
+    .dropdown {
+        @apply absolute p-2;
+    }
+    .dropdown h1 {
+        @apply text-lg text-gray-300 font-mono;
+    }
+}
+
+button .material-icons {
+    font-size: 36px;
+    vertical-align: middle;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: all 0.15s ease;
+  transition-property: transform opacity;
+  transform-origin: top left;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  transform: scaleY(0.75);
+  opacity: 0;
 }
