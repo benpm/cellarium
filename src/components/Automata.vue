@@ -35,6 +35,10 @@
       <button>
         <span @click="simulator.fillRandom()" class="material-icons">format_color_fill</span>
       </button>
+
+      <button>
+        <span @click="simulator.clear()" class="material-icons">clear</span>
+      </button>
     </div>
     <canvas id="glCanvas" ref="glCanvas"></canvas>
     <p id="rtinfo" class="front absolute top-0 left-0 p-1 m-0 text-light bg-dark text-sm">{{ frameRate }} </p>

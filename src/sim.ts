@@ -356,7 +356,7 @@ export class Sim {
                 break;
         }
     }
-    texSetup(data: ArrayBufferView) {
+    texSetup(data: Uint8Array) {
         //Texture A
         this.texA = this.texA || this.gl.createTexture()!;
         this.gl.bindTexture(this.gl.TEXTURE_2D, this.texA);

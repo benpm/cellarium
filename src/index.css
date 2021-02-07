@@ -43,4 +43,5 @@ button .material-icons {
 .fade-leave-to {
   transform: scaleY(0.75);
   opacity: 0;
+  transform-origin: top left;
 }
