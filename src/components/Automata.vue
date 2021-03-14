@@ -18,8 +18,19 @@
       <button @click="simSettingsShow = !simSettingsShow">
         <span class="material-icons">video_settings</span>
         <transition name="fade">
-          <div class="rounded dropdown" v-if="simSettingsShow">
+          <div @click.stop="" class="rounded dropdown" v-if="simSettingsShow">
             <h1>Simulation Settings</h1>
+            <div class="value-slider">
+              <span class="material-icons">speed</span>
+              <input type="range" name="pen-size" id="pen-size-slider" min="1" max="16" v-model="simulator.stepsPerFrame">
+              <span class="label">{{ simulator.stepsPerFrame }}</span>
+            </div>
+            <div class="value-slider">
+              <span class="material-icons">crop_free</span>
+              <input type="range" name="sim-size" id="sim-size-slider" min="8" max="12" value="10"
+                @change="simulator.simSize = 2**Number($event.target.value)">
+              <span class="label">{{ simulator._simSize }}x</span>
+            </div>
           </div>
         </transition>
       </button>
@@ -82,11 +93,6 @@ const presets = {
       this.frameRate = `${this.simulator.frames} frames/sec per ${this.simulator.steps} steps/sec`;
       this.simulator.frames = 0;
       this.simulator.steps = 0;
-    }
-  },
-  methods: {
-    changePenSize() {
-      this.simulator.clear()
     }
   },
   mounted() {

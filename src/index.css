@@ -16,7 +16,7 @@
         @apply hover:text-light;
     }
     .dropdown {
-        @apply bg-dark border-medium border-4 absolute p-2 top-full left-1/2;
+        @apply bg-dark border-medium border-4 absolute p-2 top-full mt-1 left-1/2;
     }
     .dropdown h1 {
         @apply text-lg text-medium font-mono font-bold;
@@ -47,7 +47,7 @@ button .material-icons {
 }
 
 .dropdown {
-    width: 300px;
+    width: 350px;
 }
 
 .fade-enter-active,

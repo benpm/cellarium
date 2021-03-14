@@ -51,7 +51,7 @@ export class Sim {
         {loc: WebGLUniformLocation}> = {};
     colorUniforms: any;                         // Uniforms for colorProgram
     drawUniforms: any;                          // Uniforms for colorProgram
-    simSize = 1024;                             // Size of simulation texture in pixels
+    _simSize = 1024;                             // Size of simulation texture in pixels
     ruleData = new Uint8Array(1024**2);         // Raw bytes of rule data
     ruleTex?: WebGLTexture;                     // WebGL texture containing rule data
     colorMapTex?: WebGLTexture;                 // State to color map texture
@@ -84,10 +84,11 @@ export class Sim {
     pause = false;                              // Simulation is paused
     stepsPerFrame = 1;                          // Simulation steps per rendered frame
     flip = false;                               // Indicates framebuffer flip
-    fbA?: WebGLFramebuffer;                     // First framebuffer
-    fbB?: WebGLFramebuffer;                     // Second framebuffer
-    texA?: WebGLTexture;
-    texB?: WebGLTexture;
+    private fbA?: WebGLFramebuffer;                     // First framebuffer
+    private fbB?: WebGLFramebuffer;                     // Second framebuffer
+    private texA?: WebGLTexture;
+    private texB?: WebGLTexture;
+    private texDataBuffer = new Uint8Array(4096**2);
     steps = 0;                                  // Simulation steps so far
     frames = 0;                                 // Rendered frames so far
     lastFPSSample = Date.now();                 // Millisecond timestap of last FPS sample
@@ -114,6 +115,17 @@ export class Sim {
         }
         this.webGlSetup(shaders);
         this.fillRandom();
+    }
+    get simSize(): number {
+        return this._simSize;
+    }
+    set simSize(val: number) {
+        this._simSize = val;
+        console.debug(val);
+        if (this.fbA && this.fbB) {
+            this.clear();
+            this.texSetup();
+        }
     }
     mouseHandler(e: MouseEvent) {
         this.drawUniforms.mouse.val[0] = (Math.floor(fmod((
@@ -253,19 +265,17 @@ export class Sim {
     germinate() {
         // Clear with a single spot in the center
         this.clear();
-        const data = new Uint8Array(this.simSize * this.simSize);
         const i = (this.simSize * (this.simSize / 2));
-        data[i] = this.pen.state;
-        this.texSetup(data);
+        this.texDataBuffer[i] = this.pen.state;
+        this.texSetup();
     }
     fillRandom() {
         // Clear with a single spot in the center
         this.clear();
-        const data = new Uint8Array(this.simSize * this.simSize);
-        for (let i = 0; i < data.length; i++) {
-            data[i] = Math.floor(Math.random() * this.states);
+        for (let i = 0; i < this.simSize**2; i++) {
+            this.texDataBuffer[i] = Math.floor(Math.random() * this.states);
         }
-        this.texSetup(data);
+        this.texSetup();
     }
     import() {
         document.querySelector<HTMLInputElement>("#ruledata")?.select();
@@ -353,11 +363,12 @@ export class Sim {
                 break;
         }
     }
-    texSetup(data: Uint8Array) {
+    texSetup() {
         //Texture A
         this.texA = this.texA || this.gl.createTexture()!;
         this.gl.bindTexture(this.gl.TEXTURE_2D, this.texA);
-        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.R8, this.simSize, this.simSize, 0, this.gl.RED, this.gl.UNSIGNED_BYTE, data || null);
+        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.R8, this.simSize, this.simSize,
+            0, this.gl.RED, this.gl.UNSIGNED_BYTE, this.texDataBuffer.subarray(0, this.simSize**2));
         this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.REPEAT);
         this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.REPEAT);
         this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
@@ -369,7 +380,8 @@ export class Sim {
         //Texture B
         this.texB = this.texB || this.gl.createTexture()!;
         this.gl.bindTexture(this.gl.TEXTURE_2D, this.texB);
-        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.R8, this.simSize, this.simSize, 0, this.gl.RED, this.gl.UNSIGNED_BYTE, data || null);
+        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.R8, this.simSize, this.simSize,
+            0, this.gl.RED, this.gl.UNSIGNED_BYTE, null);
         this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.REPEAT);
         this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.REPEAT);
         this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
