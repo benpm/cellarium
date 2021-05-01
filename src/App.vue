@@ -6,10 +6,12 @@
 <script lang="ts">
 import { Options, Vue } from 'vue-class-component';
 import Automata from './components/Automata.vue';
+import Dropdown from './components/Dropdown.vue';
 
 @Options({
   components: {
     Automata,
+    Dropdown
   },
   data() {
     return {

@@ -89,6 +89,7 @@ export class Sim {
     private texA?: WebGLTexture;
     private texB?: WebGLTexture;
     private texDataBuffer = new Uint8Array(4096**2);
+    private bufferFilled = false;
     steps = 0;                                  // Simulation steps so far
     frames = 0;                                 // Rendered frames so far
     lastFPSSample = Date.now();                 // Millisecond timestap of last FPS sample
@@ -113,6 +114,7 @@ export class Sim {
         for (let i = 2; i <= 14; i++) {
             this.nStateMap.set(ruleLength(i), i);
         }
+        console.debug(this.nStateMap);
         this.webGlSetup(shaders);
         this.fillRandom();
     }
@@ -189,6 +191,7 @@ export class Sim {
         const length = ruleLength(this.states);
         const rule = new Uint8Array(length);
         const zeroChance = Math.max(1 - (1 / Math.pow(this.states, 0.50)), 0.50);
+        console.debug("new rule of length", length, "with n states = ", this.states);
         for (let i = 0; i < length; i++) {
             if (Math.random() < zeroChance) {
                 rule[i] = 0;
@@ -272,8 +275,11 @@ export class Sim {
     fillRandom() {
         // Clear with a single spot in the center
         this.clear();
-        for (let i = 0; i < this.simSize**2; i++) {
-            this.texDataBuffer[i] = Math.floor(Math.random() * this.states);
+        if (!this.bufferFilled) {
+            for (let i = 0; i < this.texDataBuffer.length; i++) {
+                this.texDataBuffer[i] = Math.floor(Math.random() * this.states);
+            }
+            this.bufferFilled = true;
         }
         this.texSetup();
     }
@@ -537,6 +543,7 @@ export class Sim {
     set states(states: number) {
         if (states != this._states) {
             if (states >= 2 && states < 14) {
+                console.debug(states);
                 this._states = states;
                 if (this.pen.state >= this._states) {
                     this.pen.state = this._states - 1;

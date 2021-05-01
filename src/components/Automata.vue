@@ -1,39 +1,35 @@
 <template>
   <div class="automataWindow grid items-start justify-center">
     <div id="ui-container" class="grid overflow-visible justify-center grid-flow-col-dense place-items-center p-2 gap-2">
-      <button @click="penSettingsShow = !penSettingsShow">
-        <span class="material-icons">edit</span>
-        <transition name="fade">
-          <div @click.stop="" class="rounded dropdown" v-if="penSettingsShow">
-            <h1>Pen Settings</h1>
-            <div class="value-slider">
-              <span class="material-icons">line_weight</span>
-              <input type="range" name="pen-size" id="pen-size-slider" min="1" max="200" v-model="simulator.pen.size">
-              <span class="label">{{ simulator.pen.size }}</span>
-            </div>
-          </div>
-        </transition>
-      </button>
+      <dropdown icon_name="edit" dropdown_title="Pen Settings">
+        <div class="value-slider">
+          <span class="material-icons">line_weight</span>
+          <input type="range" name="pen-size" id="pen-size-slider" min="1" max="200" v-model="simulator.pen.size">
+          <span class="label">{{ simulator.pen.size }}</span>
+        </div>
+      </dropdown>
 
-      <button @click="simSettingsShow = !simSettingsShow">
-        <span class="material-icons">video_settings</span>
-        <transition name="fade">
-          <div @click.stop="" class="rounded dropdown" v-if="simSettingsShow">
-            <h1>Simulation Settings</h1>
-            <div class="value-slider">
-              <span class="material-icons">speed</span>
-              <input type="range" name="pen-size" id="pen-size-slider" min="1" max="16" v-model="simulator.stepsPerFrame">
-              <span class="label">{{ simulator.stepsPerFrame }}</span>
-            </div>
-            <div class="value-slider">
-              <span class="material-icons">crop_free</span>
-              <input type="range" name="sim-size" id="sim-size-slider" min="8" max="12" value="10"
-                @change="simulator.simSize = 2**Number($event.target.value)">
-              <span class="label">{{ simulator._simSize }}x</span>
-            </div>
-          </div>
-        </transition>
-      </button>
+      <dropdown icon_name="video_settings" dropdown_title="Simulation Settings">
+        <div class="value-slider">
+          <span class="material-icons">speed</span>
+          <input type="range" name="pen-size" id="pen-size-slider" min="1" max="16" v-model="simulator.stepsPerFrame">
+          <span class="label">{{ simulator.stepsPerFrame }}</span>
+        </div>
+        <div class="value-slider">
+          <span class="material-icons">crop_free</span>
+          <input type="range" name="sim-size" id="sim-size-slider" min="8" max="12" value="10"
+            @change="simulator.simSize = 2**Number($event.target.value)">
+          <span class="label">{{ simulator._simSize }}x</span>
+        </div>
+      </dropdown>
+
+      <dropdown icon_name="edit_note" dropdown_title="Rule Settings">
+        <div class="value-slider">
+          <span class="material-icons">style</span>
+          <input type="range" name="nstates" id="nstates-slider" min="2" max="14" v-model.number="simulator.states">
+          <span class="label">{{ simulator.states }}</span>
+        </div>
+      </dropdown>
 
       <button @click="simulator.pause = !simulator.pause">
         <span v-if="simulator ? simulator.pause : false" class="material-icons">play_arrow</span>
@@ -65,6 +61,7 @@
 <script lang="ts">
 import { Options, Vue } from 'vue-class-component';
 import { Sim } from '../sim'
+import Dropdown from './Dropdown.vue';
 
 const shaders = {
   "colormap": require('../shaders/colormap.glsl').default,
@@ -78,6 +75,9 @@ const presets = {
 };
 
 @Options({
+  components: {
+    "dropdown": Dropdown
+  },
   props: {
   },
   data() {
@@ -109,10 +109,9 @@ const presets = {
     this.simulator.animateScene();
   }
 })
-export default class HelloWorld extends Vue {}
+export default class Automata extends Vue {}
 </script>
 
-<!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
 
   .automataWindow {
