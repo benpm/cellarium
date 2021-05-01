@@ -1,5 +1,5 @@
 <template>
-  <button @click="shown = !shown">
+  <button class="options-button" @click="shown = !shown">
     <span class="material-icons">{{ icon_name }}</span>
     <transition name="fade">
       <div @click.stop="" class="rounded dropdown" v-if="shown">

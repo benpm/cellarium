@@ -79,7 +79,7 @@ export class Sim {
         state: 1,
         size: 50
     };
-    preset = "game of life";                    // Current rule preset selection
+    _preset = "game of life";                   // Current rule preset selection
     doStep = false;                             // Indicates that a simulation step should be performed
     pause = false;                              // Simulation is paused
     stepsPerFrame = 1;                          // Simulation steps per rendered frame
@@ -118,6 +118,15 @@ export class Sim {
         this.webGlSetup(shaders);
         this.fillRandom();
     }
+    get preset(): string {
+        return this._preset;
+    }
+    set preset(val: string) {
+        this._preset = val;
+        if (this.presets[val]) {
+            this.importRule(this.presets[val]);
+        }
+    }
     get simSize(): number {
         return this._simSize;
     }
@@ -127,6 +136,20 @@ export class Sim {
         if (this.fbA && this.fbB) {
             this.clear();
             this.texSetup();
+        }
+    }
+    populatePresets() {
+        console.debug("owa owa");
+        const menuItems = document.getElementById("presets-menu-items");
+        for (const preset of Object.entries(this.presets)) {
+            console.debug(preset[0]);
+            const item = document.createElement("span");
+            item.innerHTML = preset[0];
+            item.className = "menu-item";
+            item.addEventListener("click", () => {
+                this.preset = preset[0];
+            });
+            menuItems?.appendChild(item);
         }
     }
     mouseHandler(e: MouseEvent) {
@@ -226,6 +249,7 @@ export class Sim {
     }
     //Imports rule from unicode string directly into current rule buffer, setting rule to given
     importRule(string: string) {
+        console.debug("import rule", string);
         let compbytes = new Uint8Array(string.length);
         compbytes = compbytes.map((_, i) => { return pcharMap[string.charCodeAt(i)]});
         const x = lz4.decompress(compbytes);
@@ -528,6 +552,7 @@ export class Sim {
         return program;
     }
     regenRuleTex() {
+        console.debug(this.ruleData);
         //Rule texture
         this.gl.useProgram(this.simProgram!);
         this.ruleTex = this.ruleTex || this.gl.createTexture()!;
