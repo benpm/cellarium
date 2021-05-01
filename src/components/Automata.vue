@@ -1,7 +1,7 @@
 <template>
   <div class="automataWindow grid items-start justify-center">
     <div id="ui-container" class="grid overflow-visible justify-center grid-flow-col-dense place-items-center p-2 gap-2">
-      <dropdown icon_name="edit" dropdown_title="Pen Settings">
+      <dropdown icon_name="edit" dropdown_title="Pen Settings" @hide-all="hideall = !hideall" :vd="hideall">
         <div class="dropdown-item value-slider">
           <span class="material-icons">line_weight</span>
           <input type="range" min="1" max="200" v-model="simulator.pen.size">
@@ -14,7 +14,7 @@
         </div>
       </dropdown>
 
-      <dropdown icon_name="video_settings" dropdown_title="Simulation Settings">
+      <dropdown icon_name="video_settings" dropdown_title="Simulation Settings" @hide-all="hideall = !hideall" :vd="hideall">
         <div class="dropdown-item value-slider">
           <span class="material-icons">speed</span>
           <input type="range" min="1" max="16" v-model="simulator.stepsPerFrame">
@@ -26,9 +26,9 @@
             @change="simulator.simSize = 2**Number($event.target.value)">
           <span class="label">{{ simulator._simSize }}x</span>
         </div>
-      </dropdown>
+      </dropdown> 
 
-      <dropdown icon_name="edit_note" dropdown_title="Rule Settings">
+      <dropdown icon_name="edit_note" dropdown_title="Rule Settings" @hide-all="hideall = !hideall" :vd="hideall">
         <div class="dropdown-item menu">
           <span class="material-icons">toc</span>
           <input type="text" name="preset" id="preset-menu" v-model="simulator.preset">
@@ -107,13 +107,15 @@ const presets = {
   },
   props: {
   },
+  emits: [
+    "hide-menu"
+  ],
   data() {
     return {
       simulator: null,
       frameRate: "",
-      penSettingsShow: false,
-      simSettingsShow: false,
-      presetsShow: false
+      presetsShow: false,
+      hideall: true
     }
   },
   watch: {
@@ -121,6 +123,11 @@ const presets = {
       this.frameRate = `${this.simulator.frames} frames/sec per ${this.simulator.steps} steps/sec`;
       this.simulator.frames = 0;
       this.simulator.steps = 0;
+    }
+  },
+  methods: {
+    blah() {
+      console.debug("blah");
     }
   },
   mounted() {
