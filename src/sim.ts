@@ -114,7 +114,6 @@ export class Sim {
         for (let i = 2; i <= 14; i++) {
             this.nStateMap.set(ruleLength(i), i);
         }
-        console.debug(this.nStateMap);
         this.webGlSetup(shaders);
         this.fillRandom();
     }
@@ -132,17 +131,14 @@ export class Sim {
     }
     set simSize(val: number) {
         this._simSize = val;
-        console.debug(val);
         if (this.fbA && this.fbB) {
             this.clear();
             this.texSetup();
         }
     }
     populatePresets() {
-        console.debug("owa owa");
         const menuItems = document.getElementById("presets-menu-items");
         for (const preset of Object.entries(this.presets)) {
-            console.debug(preset[0]);
             const item = document.createElement("span");
             item.innerHTML = preset[0];
             item.className = "menu-item";
@@ -214,7 +210,6 @@ export class Sim {
         const length = ruleLength(this.states);
         const rule = new Uint8Array(length);
         const zeroChance = Math.max(1 - (1 / Math.pow(this.states, 0.50)), 0.50);
-        console.debug("new rule of length", length, "with n states = ", this.states);
         for (let i = 0; i < length; i++) {
             if (Math.random() < zeroChance) {
                 rule[i] = 0;
@@ -249,7 +244,6 @@ export class Sim {
     }
     //Imports rule from unicode string directly into current rule buffer, setting rule to given
     importRule(string: string) {
-        console.debug("import rule", string);
         let compbytes = new Uint8Array(string.length);
         compbytes = compbytes.map((_, i) => { return pcharMap[string.charCodeAt(i)]});
         const x = lz4.decompress(compbytes);
@@ -552,7 +546,6 @@ export class Sim {
         return program;
     }
     regenRuleTex() {
-        console.debug(this.ruleData);
         //Rule texture
         this.gl.useProgram(this.simProgram!);
         this.ruleTex = this.ruleTex || this.gl.createTexture()!;
@@ -568,7 +561,6 @@ export class Sim {
     set states(states: number) {
         if (states != this._states) {
             if (states >= 2 && states < 14) {
-                console.debug(states);
                 this._states = states;
                 if (this.pen.state >= this._states) {
                     this.pen.state = this._states - 1;

@@ -67,18 +67,17 @@ button .material-icons {
 
 .dropdown {
     width: 350px;
+    transform-origin: top left;
 }
 
 .fade-enter-active,
 .fade-leave-active {
   transition: all 0.15s ease;
   transition-property: transform opacity;
-  transform-origin: top left;
 }
 
 .fade-enter-from,
 .fade-leave-to {
   transform: scaleY(0.75);
   opacity: 0;
-  transform-origin: top left;
 }

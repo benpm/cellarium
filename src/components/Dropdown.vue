@@ -22,6 +22,11 @@ import { Options, Vue } from 'vue-class-component';
     return {
       shown: false
     }
+  },
+  mounted() {
+    document.getElementById("glCanvas")?.addEventListener("click", () => {
+      this.shown = false;
+    })
   }
 })
 export default class Dropdown extends Vue {}
