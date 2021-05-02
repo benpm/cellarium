@@ -41,6 +41,15 @@ for (let i = 0; i < pchars.length; i++) {
     pcharMap[pchars.charCodeAt(i)] = i;
 }
 
+
+const texDataBuffer = new Uint8Array(4096**2);
+
+export function randomizeDataBuffer(m: number) {
+    for (let i = 0; i < texDataBuffer.length; i++) {
+        texDataBuffer[i] = Math.floor(Math.random() * m);
+    }
+}
+
 export class Sim {
     gl: WebGL2RenderingContext;                 // WebGL2 rendering context, passed into constructor
     simProgram?: WebGLProgram;                  // WebGL program for simulating cellular automata
@@ -88,8 +97,6 @@ export class Sim {
     private fbB?: WebGLFramebuffer;                     // Second framebuffer
     private texA?: WebGLTexture;
     private texB?: WebGLTexture;
-    private texDataBuffer = new Uint8Array(4096**2);
-    private bufferFilled = false;
     steps = 0;                                  // Simulation steps so far
     frames = 0;                                 // Rendered frames so far
     lastFPSSample = Date.now();                 // Millisecond timestap of last FPS sample
@@ -115,7 +122,8 @@ export class Sim {
             this.nStateMap.set(ruleLength(i), i);
         }
         this.webGlSetup(shaders);
-        this.fillRandom();
+        randomizeDataBuffer(this._states);
+        this.resetSim();
     }
     get preset(): string {
         return this._preset;
@@ -287,18 +295,12 @@ export class Sim {
         // Clear with a single spot in the center
         this.clear();
         const i = (this.simSize * (this.simSize / 2));
-        this.texDataBuffer[i] = this.pen.state;
+        texDataBuffer[i] = this.pen.state;
         this.texSetup();
     }
-    fillRandom() {
+    resetSim() {
         // Clear with a single spot in the center
         this.clear();
-        if (!this.bufferFilled) {
-            for (let i = 0; i < this.texDataBuffer.length; i++) {
-                this.texDataBuffer[i] = Math.floor(Math.random() * this.states);
-            }
-            this.bufferFilled = true;
-        }
         this.texSetup();
     }
     import() {
@@ -342,7 +344,8 @@ export class Sim {
                 this.germinate();
                 break;
             case "f":
-                this.fillRandom();
+                randomizeDataBuffer(this._states);
+                this.resetSim();
                 break;
             case "m":
                 this.mutate();
@@ -392,7 +395,7 @@ export class Sim {
         this.texA = this.texA || this.gl.createTexture()!;
         this.gl.bindTexture(this.gl.TEXTURE_2D, this.texA);
         this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.R8, this.simSize, this.simSize,
-            0, this.gl.RED, this.gl.UNSIGNED_BYTE, this.texDataBuffer.subarray(0, this.simSize**2));
+            0, this.gl.RED, this.gl.UNSIGNED_BYTE, texDataBuffer.subarray(0, this.simSize**2));
         this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.REPEAT);
         this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.REPEAT);
         this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);

@@ -58,7 +58,7 @@
         <span class="material-icons">casino</span>
       </button>
 
-      <button class="options-button" @click="simulator.fillRandom()">
+      <button class="options-button" @click="fillRandom()">
         <span class="material-icons">format_color_fill</span>
       </button>
 
@@ -74,7 +74,7 @@
 
 <script lang="ts">
 import { Options, Vue } from 'vue-class-component';
-import { Sim } from '../sim'
+import { Sim, randomizeDataBuffer } from '../sim'
 import Dropdown from './Dropdown.vue';
 
 const shaders = {
@@ -128,6 +128,10 @@ const presets = {
   methods: {
     blah() {
       console.debug("blah");
+    },
+    fillRandom() {
+      randomizeDataBuffer(this.simulator.states);
+      this.simulator.resetSim();
     }
   },
   mounted() {
