@@ -10,9 +10,12 @@
     #app, .automataWindow {
         @apply h-screen w-screen font-mono;
     }
+    button {
+        @apply focus:outline-none appearance-none;
+    }
     button.options-button {
         @apply front;
-        @apply focus:outline-none overflow-visible relative appearance-none p-1 text-medium bg-dark border-medium border-4 py-1 px-2 h-16 w-16 rounded-full;
+        @apply overflow-visible relative p-1 text-medium bg-dark border-medium border-4 py-1 px-2 h-16 w-16 rounded-full;
         @apply hover:text-light;
     }
     .dropdown {
@@ -42,20 +45,19 @@
     }
 
     /* Menu */
+    button.menu-button {
+        @apply hover:text-light;
+    }
     .dropdown-item.menu input {
         @apply bg-black text-light p-1;
     }
     .dropdown-item.menu .menu-items {
-        @apply absolute bg-black p-1;
+        @apply absolute bg-black p-1 overflow-y-scroll text-light;
         width: 250px;
         max-height: 350px;
-        overflow-y: scroll;
     }
     .menu-item {
-        @apply block text-left p-1;
-    }
-    .menu-item:hover {
-        @apply bg-dark;
+        @apply block text-left p-1 hover:bg-dark;
     }
 }
 

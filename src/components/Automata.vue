@@ -32,7 +32,7 @@
         <div class="dropdown-item menu">
           <span class="material-icons">toc</span>
           <input type="text" name="preset" id="preset-menu" v-model="simulator.preset">
-          <button @click="presetsShow = !presetsShow" @click.once="simulator.populatePresets($event.target)">
+          <button class="menu-button" @click="presetsShow = !presetsShow" @click.once="simulator.populatePresets($event.target)">
             <span class="material-icons">arrow_drop_down_circle</span>
             <div class="menu-items" id="presets-menu-items" v-show="presetsShow">
             </div>

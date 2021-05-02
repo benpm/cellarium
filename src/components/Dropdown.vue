@@ -1,5 +1,5 @@
 <template>
-  <button class="options-button" v-bind:style="{'background-color': shown ? '#555555' : ''}" @click="$emit('hide-all'); clicked = true;">
+  <button class="options-button" v-bind:style="{'background-color': shown ? '#555555' : ''}" @click="onClick()">
     <span class="material-icons">{{ icon_name }}</span>
     <transition name="fade">
       <div @click.stop="" class="rounded dropdown" v-if="shown">
@@ -34,6 +34,14 @@ import { Options, Vue } from 'vue-class-component';
     document.getElementById("glCanvas")?.addEventListener("mousedown", () => {
       this.shown = false;
     })
+  },
+  methods: {
+    onClick() {
+      this.$emit('hide-all');
+      if (!this.shown) {
+        this.clicked = true;
+      }
+    }
   }
 })
 export default class Dropdown extends Vue {}
