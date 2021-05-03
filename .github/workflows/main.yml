@@ -9,6 +9,9 @@ jobs:
     runs-on: node12
     steps:
       - uses: actions/checkout@v2
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 14.15
       - name: Build Vue App
         run: |
           npm ci
