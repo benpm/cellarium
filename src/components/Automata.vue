@@ -9,7 +9,7 @@
         </div>
         <div class="dropdown-item value-slider">
           <span class="material-icons">palette</span>
-          <input type="range" min="1" max="14" v-model="simulator.pen.state">
+          <input type="range" min="1" :max="simulator.states - 1" v-model="simulator.pen.state">
           <span class="label">{{ simulator.pen.state }}</span>
         </div>
       </dropdown>
@@ -22,8 +22,8 @@
         </div>
         <div class="dropdown-item value-slider">
           <span class="material-icons">crop_free</span>
-          <input type="range" min="8" max="12" value="10"
-            @change="simulator.simSize = 2**Number($event.target.value)">
+          <input type="range" min="8" max="12" :value="Math.floor(Math.log2(simulator.simSize))"
+            @input="simulator.simSize = 2**Number($event.target.value)">
           <span class="label">{{ simulator._simSize }}x</span>
         </div>
       </dropdown> 
@@ -31,7 +31,7 @@
       <dropdown icon_name="edit_note" dropdown_title="Rule Settings" @hide-all="hideall = !hideall" :vd="hideall">
         <div class="dropdown-item menu">
           <span class="material-icons">toc</span>
-          <input type="text" name="preset" id="preset-menu" v-model="simulator.preset">
+          <div class="text">{{ simulator.preset }}</div>
           <button class="menu-button" @click="presetsShow = !presetsShow" @click.once="simulator.populatePresets($event.target)">
             <span class="material-icons">arrow_drop_down_circle</span>
             <div class="menu-items" id="presets-menu-items" v-show="presetsShow">
@@ -67,7 +67,7 @@
       </button>
     </div>
     <canvas id="glCanvas" ref="glCanvas"></canvas>
-    <p id="rtinfo" class="front absolute top-0 left-0 p-1 m-0 text-light bg-dark text-sm">{{ frameRate }} </p>
+    <!-- <p id="rtinfo" class="front absolute top-0 left-0 p-1 m-0 text-light bg-dark text-sm">{{ frameRate }} </p> -->
 
   </div>
 </template>

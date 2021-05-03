@@ -28,9 +28,16 @@
         @apply bg-transparent flex items-center place-items-center gap-2 text-medium;
     }
 
+    /* Display Text */
+    .dropdown div.text {
+        @apply bg-black text-light text-left p-1;
+        width: 80%;
+    }
+
     /* Value Slider */
     .dropdown-item.value-slider input[type=range] {
         @apply appearance-none bg-transparent;
+        width: 70%;
     }
     .dropdown-item.value-slider input[type=range]::-webkit-slider-thumb,
     .dropdown-item.value-slider input[type=range]::-moz-range-thumb {
