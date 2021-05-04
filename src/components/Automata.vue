@@ -28,7 +28,8 @@
         </div>
       </dropdown> 
 
-      <dropdown icon_name="edit_note" dropdown_title="Rule Settings" @hide-all="hideall = !hideall" :vd="hideall">
+      <dropdown icon_name="edit_note" dropdown_title="Rule Settings" @hide-all="presetsShow = false; hideall = !hideall" :vd="hideall">
+        <!-- Rule Preset -->
         <div class="dropdown-item menu">
           <span class="material-icons">toc</span>
           <div class="text">{{ simulator.preset }}</div>
@@ -38,31 +39,42 @@
             </div>
           </button>
         </div>
+        <!-- Number of States Slider -->
         <div class="dropdown-item value-slider">
           <span class="material-icons">style</span>
           <input type="range" name="nstates" id="nstates-slider" min="2" max="14" v-model.number="simulator.states">
           <span class="label">{{ simulator.states }}</span>
         </div>
+        <!-- Import Rule -->
+        <div class="dropdown-item button-group">
+          <span class="material-icons">file_download</span>
+          <menu-button @click="simulator.import()">import from clipboard</menu-button>
+        </div>
+        <!-- Export Rule -->
+        <div class="dropdown-item button-group">
+          <span class="material-icons">file_upload</span>
+          <menu-button @click="simulator.export()">export to clipboard</menu-button>
+        </div>
       </dropdown>
 
-      <button class="options-button" @click="simulator.pause = !simulator.pause">
+      <button @keydown.stop="" class="options-button" @click="simulator.pause = !simulator.pause">
         <span v-if="simulator ? simulator.pause : false" class="material-icons">play_arrow</span>
         <span v-if="simulator ? !simulator.pause : true" class="material-icons">pause</span>
       </button>
 
-      <button class="options-button" @click="simulator.step()">
+      <button @keydown.stop="" class="options-button" @click="simulator.step()">
         <span class="material-icons">skip_next</span>
       </button>
 
-      <button class="options-button" @click="simulator.newRule()">
+      <button @keydown.stop="" class="options-button" @click="simulator.newRule()">
         <span class="material-icons">casino</span>
       </button>
 
-      <button class="options-button" @click="fillRandom()">
+      <button @keydown.stop="" class="options-button" @click="fillRandom()">
         <span class="material-icons">format_color_fill</span>
       </button>
 
-      <button class="options-button" @click="simulator.clear()">
+      <button @keydown.stop="" class="options-button" @click="simulator.clear()">
         <span class="material-icons">clear</span>
       </button>
     </div>
@@ -76,6 +88,7 @@
 import { Options, Vue } from 'vue-class-component';
 import { Sim, randomizeDataBuffer } from '../sim'
 import Dropdown from './Dropdown.vue';
+import MenuButton from './MenuButton.vue';
 
 const shaders = {
   "colormap": require('../shaders/colormap.glsl').default,
@@ -94,7 +107,8 @@ for (const line of presetsRaw.split("\n")) {
 
 @Options({
   components: {
-    "dropdown": Dropdown
+    "dropdown": Dropdown,
+    "menu-button": MenuButton
   },
   props: {
   },

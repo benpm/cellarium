@@ -6,6 +6,12 @@
     z-index: 2;
 }
 
+@keyframes button-flash {
+    from {
+        @apply bg-accent;
+    }
+}
+
 @layer base {
     #app, .automataWindow {
         @apply h-screen w-screen font-mono;
@@ -69,8 +75,18 @@
     .menu-item {
         @apply block text-left p-1 hover:bg-dark;
     }
-}
 
+    /* Button */
+    .button-group button {
+        @apply bg-medium hover:bg-light p-1 text-black rounded-sm w-4/5;
+    }
+    button.button-anim:hover {
+        animation: button-flash 0.25s linear;
+    }
+    button.button-anim {
+        animation: button-flash 0.25s linear;
+    }
+}
 
 button .material-icons {
     font-size: 36px;

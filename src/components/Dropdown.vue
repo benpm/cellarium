@@ -1,5 +1,5 @@
 <template>
-  <button class="options-button" v-bind:style="{'background-color': shown ? '#555555' : ''}" @click="onClick()">
+  <button ref="button" class="options-button" v-bind:style="{'background-color': shown ? '#555555' : ''}" @click="onClick()">
     <span class="material-icons">{{ icon_name }}</span>
     <transition name="fade">
       <div @click.stop="" class="rounded dropdown" v-if="shown">
@@ -28,6 +28,7 @@ import { Options, Vue } from 'vue-class-component';
     vd() {
       this.shown = this.clicked;
       this.clicked = false;
+      this.$refs.button.blur();
     }
   },
   mounted() {
@@ -41,6 +42,7 @@ import { Options, Vue } from 'vue-class-component';
       if (!this.shown) {
         this.clicked = true;
       }
+      this.$refs.button.blur();
     }
   }
 })

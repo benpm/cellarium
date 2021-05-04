@@ -135,6 +135,12 @@ export class Sim {
         this.webGlSetup(shaders);
         randomizeDataBuffer(this._states);
         this.resetSim();
+        //Create clipboard node
+        const clipboardNode = document.createElement("input");
+        clipboardNode.id = "_clipboard";
+        clipboardNode.type = "text";
+        clipboardNode.style.position = "fixed";
+        document.body.appendChild(clipboardNode);
     }
     get preset(): string {
         return this._preset;
@@ -240,7 +246,7 @@ export class Sim {
     }
     newRule() {
         this.setRule(this.randomRule());
-        this._preset = "...";
+        this._preset = "...random";
     }
     //Exports rule to unicode string
     exportRule(rule: Uint8Array): string {
@@ -266,7 +272,14 @@ export class Sim {
     importRule(string: string) {
         let compbytes = new Uint8Array(string.length);
         compbytes = compbytes.map((_, i) => { return pcharMap[string.charCodeAt(i)]});
-        const x = lz4.decompress(compbytes);
+        let x;
+        try {
+            x = lz4.decompress(compbytes);
+        }
+        catch {
+            console.error("invalid rule string");
+            return;
+        }
         const values = new Uint16Array(x.buffer);
         //Extract values from decompressed values
         let z = 0;
@@ -316,13 +329,14 @@ export class Sim {
         this.texSetup();
     }
     import() {
-        document.querySelector<HTMLInputElement>("#ruledata")?.select();
+        document.querySelector<HTMLInputElement>("#_clipboard")?.select();
         document.execCommand("paste");
-        this.importRule(document.querySelector<HTMLInputElement>("#ruledata")?.value!);
+        this.importRule(document.querySelector<HTMLInputElement>("#_clipboard")?.value!);
+        this._preset = "...from clipboard";
     }
     export() {
-        document.querySelector<HTMLInputElement>("#ruledata")!.value = this.exportRule(this.ruleData.slice(0, ruleLength(this.states)));
-        document.querySelector<HTMLInputElement>("#ruledata")?.select();
+        document.querySelector<HTMLInputElement>("#_clipboard")!.value = this.exportRule(this.ruleData.slice(0, ruleLength(this.states)));
+        document.querySelector<HTMLInputElement>("#_clipboard")?.select();
         document.execCommand("copy");
     }
     step() {
