@@ -21,6 +21,9 @@
     .dropdown {
         @apply bg-dark border-medium border-4 absolute p-2 top-full mt-1 left-1/2;
     }
+    .dropdown:hover {
+        cursor: default;
+    }
     .dropdown h1 {
         @apply text-lg text-medium font-mono font-bold;
     }

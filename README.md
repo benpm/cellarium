@@ -1,6 +1,6 @@
 ![banner](banner.gif)
 
-# WebGL Cellular Automata
+# Cellia
 <*WIP Vue Port*>
 
 Multi-state 8-neighbor [totalistic](https://www.wikiwand.com/en/Cellular_automaton#/Totalistic) 2D cellular automata simulation written in WebGL, with support for random rule generation. The simulation takes place in a single GLSL fragment shader. Rules are stored in a very compact way, passed as a texture. Writeup on how this is done is coming!
