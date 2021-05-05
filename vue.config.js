@@ -6,5 +6,6 @@ module.exports = {
       .use('raw-loader')
       .loader('raw-loader')
       .end()
-  }
+  },
+  publicPath: "/webgl-cellular-automata/"
 }
