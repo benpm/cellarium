@@ -1,5 +1,6 @@
 <template>
-  <div class="automataWindow grid items-start justify-center">
+  <canvas id="glCanvas" ref="glCanvas"></canvas>
+  <div ref="automataWindow" class="automataWindow grid items-start justify-center">
     <div id="ui-container" class="grid overflow-visible justify-center grid-flow-col-dense place-items-center p-2 gap-2">
       <dropdown icon_name="edit" dropdown_title="Pen Settings" @hide-all="hideall = !hideall" :vd="hideall">
         <div class="dropdown-item value-slider">
@@ -78,7 +79,6 @@
         <span class="material-icons">clear</span>
       </button>
     </div>
-    <canvas id="glCanvas" ref="glCanvas"></canvas>
     <!-- <p id="rtinfo" class="front absolute top-0 left-0 p-1 m-0 text-light bg-dark text-sm">{{ frameRate }} </p> -->
 
   </div>
@@ -161,7 +161,7 @@ export default class Automata extends Vue {}
   .automataWindow {
     margin: 0px;
     padding: 0px;
-    overflow: hidden;
+    overflow: show;
   }
 
   #glCanvas {
@@ -174,8 +174,9 @@ export default class Automata extends Vue {}
     padding: 0;
     overflow: hidden;
     image-rendering: optimizeSpeed;
+    /* TODO: maybe remove this? */
     transform: scaleY(-1);
-    z-index: 1;
+    z-index: -2;
   }
 
   #info {

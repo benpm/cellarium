@@ -32,7 +32,7 @@ export default class App extends Vue {}
   color: #2c3e50;
   margin: 0px;
   padding: 0px;
-  overflow: hidden;
+  overflow: show;
 }
 body {
   margin: 0px;

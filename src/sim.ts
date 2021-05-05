@@ -66,27 +66,27 @@ export class Sim {
     colorMapTex?: WebGLTexture;                 // State to color map texture
     binomialTex?: WebGLTexture;                 // State to binomial map texture
     colorMap = new Uint8Array([                 // Mapping from state to color
-        1, 22, 39,
-        246, 247, 248,
-        255, 51, 102,
-        32, 164, 243,
-        42, 96, 65,
-        46, 196, 182,
-        243, 222, 138,
-        126, 127, 154,
-        254, 198, 1,
-        234, 115, 23,
+        // 1, 22, 39,
+        // 246, 247, 248,
+        // 255, 51, 102,
+        // 32, 164, 243,
+        // 42, 96, 65,
+        // 46, 196, 182,
+        // 243, 222, 138,
+        // 126, 127, 154,
+        // 254, 198, 1,
+        // 234, 115, 23,
 
-        // /* 0  */ 20, 20, 20,
-        // /* 1  */ 220, 220, 220,
-        // /* 2  */ 220, 50, 50,
-        // /* 3  */ 50, 220, 50,
-        // /* 4  */ 50, 50, 220,
-        // /* 5  */ 220, 220, 50,
-        // /* 6  */ 50, 220, 220,
-        // /* 7  */ 220, 50, 220,
-        // /* 8  */ 220, 50, 175,
-        // /* 9  */ 50, 220, 175,
+        /* 0  */ 20, 20, 20,
+        /* 1  */ 220, 220, 220,
+        /* 2  */ 220, 50, 50,
+        /* 3  */ 50, 220, 50,
+        /* 4  */ 50, 50, 220,
+        /* 5  */ 220, 220, 50,
+        /* 6  */ 50, 220, 220,
+        /* 7  */ 220, 50, 220,
+        /* 8  */ 220, 50, 175,
+        /* 9  */ 50, 220, 175,
         /* 10 */ 175, 50, 220,
         /* 11 */ 220, 220, 175,
         /* 12 */ 175, 220, 50,
@@ -136,11 +136,12 @@ export class Sim {
         randomizeDataBuffer(this._states);
         this.resetSim();
         //Create clipboard node
-        const clipboardNode = document.createElement("input");
-        clipboardNode.id = "_clipboard";
-        clipboardNode.type = "text";
-        clipboardNode.style.position = "fixed";
-        document.body.appendChild(clipboardNode);
+        if (!document.getElementById("_clipboard")) {
+            const clipboardNode = document.createElement("input");
+            clipboardNode.id = "_clipboard";
+            clipboardNode.type = "text";
+            document.body.appendChild(clipboardNode);
+        }
     }
     get preset(): string {
         return this._preset;
