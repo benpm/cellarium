@@ -10,7 +10,8 @@ module.exports = {
         medium: "#999999",
         meddark: "#555555",
         dark: "#222222",
-        accent: "#fe9920"
+        accent: "#fe9920",
+        error: "#eb3333"
       }
     },
   },

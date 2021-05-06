@@ -1,6 +1,6 @@
 {
-  "name": "cellia",
-  "version": "1.0.0",
+  "name": "cellarium",
+  "version": "1.0.1",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",

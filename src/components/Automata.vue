@@ -34,7 +34,7 @@
         <div class="dropdown-item menu">
           <span class="material-icons">toc</span>
           <div class="text">{{ simulator.preset }}</div>
-          <button class="menu-button" @click="presetsShow = !presetsShow" @click.once="simulator.populatePresets($event.target)">
+          <button class="menu-open" @click="presetsShow = !presetsShow" @click.once="simulator.populatePresets($event.target)">
             <span class="material-icons">arrow_drop_down_circle</span>
             <div class="menu-items" id="presets-menu-items" v-show="presetsShow">
             </div>
@@ -49,7 +49,7 @@
         <!-- Import Rule -->
         <div class="dropdown-item button-group">
           <span class="material-icons">file_download</span>
-          <menu-button @click="simulator.import()">import from clipboard</menu-button>
+          <menu-button @click="importDialogue=true">import rule</menu-button>
         </div>
         <!-- Export Rule -->
         <div class="dropdown-item button-group">
@@ -80,7 +80,14 @@
       </button>
     </div>
     <!-- <p id="rtinfo" class="front absolute top-0 left-0 p-1 m-0 text-light bg-dark text-sm">{{ frameRate }} </p> -->
-
+    <transition name="growtl">
+      <div class="textbox" v-if="importDialogue">
+        <p>paste rule string:</p>
+        <span class="material-icons" @click="importDialogue=false">cancel</span>
+        <textarea ref="input-area" cols="76" rows="14"></textarea>
+        <menu-button ref="import-button" style="{ margin: 1rem; margin-left: auto; }" @click="importRule()">import</menu-button>
+      </div>
+    </transition>
   </div>
 </template>
 
@@ -120,7 +127,8 @@ for (const line of presetsRaw.split("\n")) {
       simulator: null,
       frameRate: "",
       presetsShow: false,
-      hideall: true
+      hideall: true,
+      importDialogue: false
     }
   },
   watch: {
@@ -137,6 +145,14 @@ for (const line of presetsRaw.split("\n")) {
     fillRandom() {
       randomizeDataBuffer(this.simulator.states);
       this.simulator.resetSim();
+    },
+    importRule() {
+      const success: boolean = this.simulator.importRule(this.$refs["input-area"].value);
+      if (success) {
+        this.importDialogue = false;
+      } else {
+        this.$refs["import-button"].anim = "button-error";
+      }
     }
   },
   mounted() {

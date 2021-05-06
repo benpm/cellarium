@@ -271,6 +271,7 @@ export class Sim {
     }
     //Imports rule from unicode string directly into current rule buffer, setting rule to given
     importRule(string: string) {
+        console.debug(string);
         let compbytes = new Uint8Array(string.length);
         compbytes = compbytes.map((_, i) => { return pcharMap[string.charCodeAt(i)]});
         let x;
@@ -279,7 +280,7 @@ export class Sim {
         }
         catch {
             console.error("invalid rule string");
-            return;
+            return false;
         }
         const values = new Uint16Array(x.buffer);
         //Extract values from decompressed values
@@ -293,6 +294,7 @@ export class Sim {
         //Infer the number of states this must have
         this.states = minStates(z)!;
         this.regenRuleTex();
+        return true;
     }
     customRule() {
         const string = prompt("input some text:");
@@ -331,6 +333,8 @@ export class Sim {
     }
     import() {
         document.querySelector<HTMLInputElement>("#_clipboard")?.select();
+        document.querySelector<HTMLInputElement>("#_clipboard")?.focus();
+        document.execCommand("insertText");
         document.execCommand("paste");
         this.importRule(document.querySelector<HTMLInputElement>("#_clipboard")?.value!);
         this._preset = "...from clipboard";
@@ -338,6 +342,7 @@ export class Sim {
     export() {
         document.querySelector<HTMLInputElement>("#_clipboard")!.value = this.exportRule(this.ruleData.slice(0, ruleLength(this.states)));
         document.querySelector<HTMLInputElement>("#_clipboard")?.select();
+        document.querySelector<HTMLInputElement>("#_clipboard")?.focus();
         document.execCommand("copy");
     }
     step() {

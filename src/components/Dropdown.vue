@@ -29,7 +29,7 @@ import { Options, Vue } from 'vue-class-component';
     vd() {
       this.shown = this.clicked;
       this.clicked = false;
-      this.$refs.button.blur();
+      // this.$refs.button.blur();
     }
   },
   mounted() {
@@ -43,7 +43,7 @@ import { Options, Vue } from 'vue-class-component';
       if (!this.shown) {
         this.clicked = true;
       }
-      this.$refs.button.blur();
+      // this.$refs.button.blur();
     }
   }
 })

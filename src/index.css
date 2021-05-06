@@ -20,7 +20,19 @@
     }
 }
 
+@keyframes button-errflash {
+    12.5% { transform: translateX(-2px); }
+    50% { @apply bg-error; transform: translateX(2px); }
+    75% { transform: translateX(-2px); }
+}
+
 @layer base {
+
+    .darktheme {
+        @apply bg-dark border-black;
+        border-width: 3px;
+    }
+
     #app, .automataWindow {
         @apply font-mono;
     }
@@ -30,9 +42,8 @@
         @apply focus:outline-none appearance-none;
     }
     button.options-button {
-        @apply overflow-visible relative p-1 text-medium bg-dark border-black py-1 px-2 h-16 w-16 rounded-full;
+        @apply darktheme overflow-visible relative p-1 text-medium py-1 px-2 h-16 w-16 rounded-full;
         @apply hover:text-light;
-        border-width: 3px;
     }
     button.options-button.button-active {
         @apply bg-accent text-black;
@@ -40,8 +51,7 @@
 
     /* Dropdown Config Menu */
     .dropdown {
-        @apply bg-dark border-black absolute p-2 top-full mt-1 left-1/2;
-        border-width: 3px;
+        @apply darktheme absolute p-2 top-full mt-1 left-1/2;
     }
     .dropdown:hover {
         cursor: default;
@@ -86,7 +96,7 @@
     }
 
     /* Menu */
-    button.menu-button {
+    button.menu-open {
         @apply hover:text-light;
     }
     .dropdown-item.menu input {
@@ -102,14 +112,47 @@
     }
 
     /* Button */
-    .button-group button {
-        @apply bg-medium hover:bg-light p-1 text-black rounded-sm w-4/5;
+    .menu-button {
+        @apply bg-medium hover:bg-light p-1 text-black rounded-sm pl-3 pr-3;
     }
-    button.button-anim:hover {
+    .menu-button.button-anim:hover {
         animation: button-flash 0.25s linear;
     }
-    button.button-anim {
+    .menu-button.button-anim {
         animation: button-flash 0.25s linear;
+    }
+    .menu-button.button-error:hover {
+        animation: button-errflash 0.25s linear;
+    }
+    .menu-button.button-error {
+        animation: button-errflash 0.25s linear;
+    }
+    .dropdown .menu-button {
+        @apply w-4/5;
+    }
+
+    /* Text Box */
+    div.textbox {
+        @apply fixed darktheme p-1 m-1;
+        width: 500px;
+        height: 325px;
+        left: calc(50vw - 500px / 2);
+        top: calc(50vh - 325px / 2);
+    }
+    div.textbox p {
+        @apply text-light text-left m-1;
+    }
+    div.textbox span.material-icons {
+        @apply absolute text-light hover:text-accent cursor-pointer;
+        font-size: 32px;
+        top: -1rem;
+        right: -1rem;
+        text-shadow: 2px 2px black, -2px 2px black, 2px -2px black, -2px -2px black;
+    }
+    div.textbox textarea {
+        @apply bg-black text-light m-1 p-1 block;
+        font-size: 10px;
+        resize: none;
     }
 }
 
@@ -126,15 +169,26 @@ button .material-icons {
 .fade-enter-active,
 .fade-leave-active {
   transition: clip-path 0.15s ease;
-  clip-path: inset(0 0 0px 0px);
+  clip-path: inset(0 0 0 0);
 }
 
 .fade-enter-from,
 .fade-leave-to {
-  clip-path: inset(0 0 100% 0px);
+  clip-path: inset(0 0 100% 100%);
+}
+
+.growtl-enter-active,
+.growtl-leave-active {
+  transition: clip-path 0.15s ease;
+  clip-path: inset(0 0 0 0);
+}
+
+.growtl-enter-from,
+.growtl-leave-to {
+  clip-path: inset(0 100% 100% 0 );
 }
 
 #_clipboard {
-    position: fixed;
-    top: 100vh;
+  position: fixed;
+  top: 100vh;
 }
