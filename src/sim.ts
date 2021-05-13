@@ -125,6 +125,7 @@ export class Sim {
     };
     mouse = { x: 0, y: 0 };
     zeroChanceMultiplier = 0.5;
+    mutateRate = 1.0;
     
     constructor(
         private canvas: HTMLCanvasElement,
@@ -373,7 +374,7 @@ export class Sim {
     }
     mutate() {
         const length = ruleLength(this.states);
-        const nMutate = Math.ceil(length / 20);
+        const nMutate = Math.ceil((length / 20) * this.mutateRate);
         for (let i = 0; i < nMutate; i++) {
             const j = Math.floor(Math.random() * length);
             this.ruleData[j] = Math.floor(Math.random() * this.states);

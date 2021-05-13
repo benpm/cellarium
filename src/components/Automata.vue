@@ -71,6 +71,10 @@
         <span class="material-icons">casino</span>
       </button>
 
+      <button @keydown.stop="" class="options-button" @click="simulator.mutate()">
+        <span class="material-icons">shuffle</span>
+      </button>
+
       <dropdown icon_name="settings_suggest" dropdown_title="Rule Generation Settings" @hide-all="hideall = !hideall" :vd="hideall">
         <!-- Zero State Slider -->
         <div class="dropdown-item value-slider">
@@ -78,6 +82,13 @@
           <input type="range" name="nstates" id="nstates-slider"
             min="0.1" max="2.0" step="0.01" v-model.number="simulator.zeroChanceMultiplier">
           <span class="label">{{ simulator.zeroChanceMultiplier }}</span>
+        </div>
+        <!-- Mutate Multiplier Slider -->
+        <div class="dropdown-item value-slider">
+          <span class="material-icons">leaderboard</span>
+          <input type="range" name="nstates" id="nstates-slider"
+            min="0.1" max="5.0" step="0.1" v-model.number="simulator.mutateRate">
+          <span class="label">{{ simulator.mutateRate }}</span>
         </div>
       </dropdown>
 
