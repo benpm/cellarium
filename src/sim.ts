@@ -116,11 +116,14 @@ export class Sim {
         x: 0,
         y: 0,
         zoom: 1,
+        zoomLevel: 0,
+        zoomLevels: [1, 2, 3, 4, 6, 8, 12, 16],
         panstartcam: {x:0, y:0},
         panstartmouse: {x:0, y:0},
         panning: false,
         move: {x:0, y:0}
     };
+    mouse = { x: 0, y: 0 };
     
     constructor(
         private canvas: HTMLCanvasElement,
@@ -174,15 +177,24 @@ export class Sim {
             menuItems?.appendChild(item);
         }
     }
+    screenToWorld(pos: number) {
+        return Math.floor(fmod((
+            this.cam.x + Math.floor(pos) / this.cam.zoom), this.simSize)) / this.simSize;
+    }
     mouseHandler(e: MouseEvent) {
+        this.updateMousepos(Math.floor(e.pageX), Math.floor(e.pageY));
+    }
+    updateMousepos(x: number, y: number) {
+        this.mouse.x = x;
+        this.mouse.y = y;
         this.drawUniforms.mouse.val[0] = (Math.floor(fmod((
-            this.cam.x + Math.floor(e.pageX - 2) / this.cam.zoom), this.simSize)) / this.simSize);
+            this.cam.x + (x) / this.cam.zoom), this.simSize)) / this.simSize);
         this.drawUniforms.mouse.val[1] = (Math.floor(fmod((
-            this.cam.y + Math.floor(e.pageY - 2) / this.cam.zoom), this.simSize)) / this.simSize);
+            this.cam.y + (y) / this.cam.zoom), this.simSize)) / this.simSize);
         if (this.cam.panning) {
-            this.cam.x = fmod(this.cam.panstartcam.x + (this.cam.panstartmouse.x - e.pageX)
+            this.cam.x = fmod(this.cam.panstartcam.x + (this.cam.panstartmouse.x - x)
                 / this.cam.zoom, this.simSize * 2);
-            this.cam.y = fmod(this.cam.panstartcam.y + (this.cam.panstartmouse.y - e.pageY)
+            this.cam.y = fmod(this.cam.panstartcam.y + (this.cam.panstartmouse.y - y)
                 / this.cam.zoom, this.simSize * 2);
         }
     
@@ -190,8 +202,8 @@ export class Sim {
         this.gl.uniform4fv(this.drawUniforms.mouse.loc, this.drawUniforms.mouse.val);
     
         this.gl.useProgram(this.colorProgram!);
-        this.colorUniforms.mouse.val[0] = Math.floor(e.pageX);
-        this.colorUniforms.mouse.val[1] = Math.floor(e.pageY);
+        this.colorUniforms.mouse.val[0] = (x);
+        this.colorUniforms.mouse.val[1] = (y);
         this.colorUniforms.mouse.val[2] = this.pen.state;
         this.colorUniforms.mouse.val[3] = this.drawUniforms.mouse.val[3];
         this.gl.uniform4fv(this.colorUniforms.mouse.loc, this.colorUniforms.mouse.val);
@@ -203,8 +215,8 @@ export class Sim {
                 break;
             case 1: // Middle click
                 this.cam.panning = true;
-                this.cam.panstartmouse.x = e.pageX;
-                this.cam.panstartmouse.y = e.pageY;
+                this.cam.panstartmouse.x = this.mouse.x;
+                this.cam.panstartmouse.y = this.mouse.y;
                 this.cam.panstartcam.x = this.cam.x;
                 this.cam.panstartcam.y = this.cam.y;
                 this.canvas.style.cursor = "move";
@@ -228,9 +240,18 @@ export class Sim {
     }
     onScrollWheel(e: WheelEvent) {
         const z = this.cam.zoom;
-        this.cam.zoom = Math.max(Math.min(this.cam.zoom + (e.deltaY < 0 ? 1 : -1), 32), 1);
-        this.cam.x += this.canvas.width / (2 * z) - this.canvas.width / (2 * this.cam.zoom);
-        this.cam.y += this.canvas.height / (2 * z) - this.canvas.height / (2 * this.cam.zoom);
+        this.cam.zoomLevel = Math.max(0,
+            Math.min(this.cam.zoomLevel + (e.deltaY < 0 ? 1 : -1), this.cam.zoomLevels.length - 1)
+        );
+        this.cam.zoom = this.cam.zoomLevels[this.cam.zoomLevel]
+
+        const spX = this.mouse.x;
+        const spY = this.mouse.y;
+        const wpX = this.drawUniforms.mouse.val[0] * this.simSize;
+        const wpY = this.drawUniforms.mouse.val[1] * this.simSize;
+        this.cam.x = wpX - Math.floor(spX / this.cam.zoom);
+        this.cam.y = wpY - Math.floor(spY / this.cam.zoom);
+        this.updateMousepos(spX, spY);
     }
     randomRule() {
         const length = ruleLength(this.states);
