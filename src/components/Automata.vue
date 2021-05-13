@@ -71,6 +71,16 @@
         <span class="material-icons">casino</span>
       </button>
 
+      <dropdown icon_name="settings_suggest" dropdown_title="Rule Generation Settings" @hide-all="hideall = !hideall" :vd="hideall">
+        <!-- Zero State Slider -->
+        <div class="dropdown-item value-slider">
+          <span class="material-icons">battery_charging_full</span>
+          <input type="range" name="nstates" id="nstates-slider"
+            min="0.1" max="2.0" step="0.01" v-model.number="simulator.zeroChanceMultiplier">
+          <span class="label">{{ simulator.zeroChanceMultiplier }}</span>
+        </div>
+      </dropdown>
+
       <button @keydown.stop="" class="options-button" @click="fillRandom()">
         <span class="material-icons">format_color_fill</span>
       </button>

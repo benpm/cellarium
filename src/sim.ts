@@ -124,6 +124,7 @@ export class Sim {
         move: {x:0, y:0}
     };
     mouse = { x: 0, y: 0 };
+    zeroChanceMultiplier = 0.5;
     
     constructor(
         private canvas: HTMLCanvasElement,
@@ -256,7 +257,7 @@ export class Sim {
     randomRule() {
         const length = ruleLength(this.states);
         const rule = new Uint8Array(length);
-        const zeroChance = Math.max(1 - (1 / Math.pow(this.states, 0.50)), 0.50);
+        const zeroChance = Math.max(1 - (1 / Math.pow(this.states, this.zeroChanceMultiplier)), this.zeroChanceMultiplier);
         for (let i = 0; i < length; i++) {
             if (Math.random() < zeroChance) {
                 rule[i] = 0;
