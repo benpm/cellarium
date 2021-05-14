@@ -126,6 +126,7 @@ export class Sim {
     mouse = { x: 0, y: 0 };
     zeroChanceMultiplier = 0.5;
     mutateRate = 1.0;
+    keysPressed = new Set<string>();
     
     constructor(
         private canvas: HTMLCanvasElement,
@@ -241,19 +242,27 @@ export class Sim {
         }
     }
     onScrollWheel(e: WheelEvent) {
-        const z = this.cam.zoom;
-        this.cam.zoomLevel = Math.max(0,
-            Math.min(this.cam.zoomLevel + (e.deltaY < 0 ? 1 : -1), this.cam.zoomLevels.length - 1)
-        );
-        this.cam.zoom = this.cam.zoomLevels[this.cam.zoomLevel]
-
-        const spX = this.mouse.x;
-        const spY = this.mouse.y;
-        const wpX = this.drawUniforms.mouse.val[0] * this.simSize;
-        const wpY = this.drawUniforms.mouse.val[1] * this.simSize;
-        this.cam.x = wpX - Math.floor(spX / this.cam.zoom);
-        this.cam.y = wpY - Math.floor(spY / this.cam.zoom);
-        this.updateMousepos(spX, spY);
+        const scroll = (e.deltaY < 0 ? 1 : -1);
+        if (this.keysPressed.has("alt")) {
+            this.stepsPerFrame = Math.max(1, this.stepsPerFrame + scroll);
+        } else if (this.keysPressed.has("shift")) {
+            const scrollAmount = Math.ceil(this.pen.size / 16);
+            this.pen.size = Math.max(1, this.pen.size + scroll * scrollAmount);
+        } else {
+            const z = this.cam.zoom;
+            this.cam.zoomLevel = Math.max(0,
+                Math.min(this.cam.zoomLevel + scroll, this.cam.zoomLevels.length - 1)
+            );
+            this.cam.zoom = this.cam.zoomLevels[this.cam.zoomLevel]
+    
+            const spX = this.mouse.x;
+            const spY = this.mouse.y;
+            const wpX = this.drawUniforms.mouse.val[0] * this.simSize;
+            const wpY = this.drawUniforms.mouse.val[1] * this.simSize;
+            this.cam.x = wpX - Math.floor(spX / this.cam.zoom);
+            this.cam.y = wpY - Math.floor(spY / this.cam.zoom);
+            this.updateMousepos(spX, spY);
+        }
     }
     randomRule() {
         const length = ruleLength(this.states);
@@ -382,10 +391,12 @@ export class Sim {
         this.regenRuleTex();
     }
     onKey(e: KeyboardEvent) {
-        const key = e.key;
+        const key = e.key.toLowerCase();
+        this.keysPressed.add(key);
+        console.debug(key);
         switch(key) {
             case " ":
-            case "Space":
+            case "space":
             case "spacebar":
                 this.pause = !this.pause;
                 break;
@@ -410,16 +421,16 @@ export class Sim {
             case "delete":
                 this.clear();
                 break;
-            case "ArrowLeft":
+            case "arrowleft":
                 this.cam.move.x = -3;
                 break;
-            case "ArrowRight":
+            case "arrowright":
                 this.cam.move.x = 3;
                 break;
-            case "ArrowUp":
+            case "arrowup":
                 this.cam.move.y = -3;
                 break;
-            case "ArrowDown":
+            case "arrowdown":
                 this.cam.move.y = 3;
                 break;
             default:
@@ -433,14 +444,15 @@ export class Sim {
         }
     }
     onKeyUp(e: KeyboardEvent) {
-        const key = e.key;
+        const key = e.key.toLowerCase();
+        this.keysPressed.delete(key);
         switch(key) {
-            case "ArrowLeft":
-            case "ArrowRight":
+            case "arrowleft":
+            case "arrowright":
                 this.cam.move.x = 0;
                 break;
-            case "ArrowUp":
-            case "ArrowDown":
+            case "arrowup":
+            case "arrowdown":
                 this.cam.move.y = 0;
                 break;
         }
