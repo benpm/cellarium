@@ -1,4 +1,5 @@
 import lz4 from "lz4js";
+import { rule } from "postcss";
 
 function factorial(m: number) {
     let n = 1;
@@ -18,6 +19,31 @@ function ruleSubIndices(states: number) {
 
 function fmod(a: number, b: number) {
     return a - b * Math.floor(a / b);
+}
+
+//From https://gist.github.com/ssippe/1f92625532eef28be6974f898efb23ef#gistcomment-3364149
+function cartesianProduct<T>(...allEntries: T[][]): T[][] {
+    return allEntries.reduce<T[][]>(
+        (results, entries) =>
+            results
+                .map(result => entries.map(entry => result.concat([entry])))
+                .reduce((subResults, result) => subResults.concat(result), []),
+        [[]]
+    )
+}
+
+//Enumerates 
+function ruleSubIndex(x: number, y: number, n: number[]) {
+    let Z = 0;
+    for (let i = 1; i < n.length; i++) {
+        const v = n[i];
+        if (v > 0) {
+            Z += binomial(y + x - 1, x - 1) - binomial(y - v + x - 1, x - 1);
+        }
+        x -= 1;
+        y -= v;
+    }
+    return Z;
 }
 
 function ruleLength(states: number) {
@@ -41,7 +67,12 @@ for (let i = 0; i < pchars.length; i++) {
     pcharMap[pchars.charCodeAt(i)] = i;
 }
 
+export interface RuleSpec {
+    states: number;
+    rules: Array<{in: number; out: number; N: Record<number, Array<number>>}>;
+}
 
+//This has to live outside of the class otherwise it's really slow for some reason
 const texDataBuffer = new Uint8Array(4096**2);
 
 export function randomizeDataBuffer(m: number) {
@@ -281,6 +312,23 @@ export class Sim {
         this.setRule(this.randomRule());
         this._preset = "...random";
     }
+    //Returns the 1D index into the rule binary string
+    ruleIndex(state: number, neighbors: number[]) {
+        let subIndex = 0;
+        //The number of
+        let x = this.states;
+        //The number of neighbors unaccounted for
+        let y = 8;
+        for (let i = 1; i < neighbors.length; i++) {
+            const v = neighbors[i];
+            if (v > 0) {
+                subIndex += binomial(y + x - 1, x - 1) - binomial(y - v + x - 1, x - 1);
+            }
+            x -= 1;
+            y -= v;
+        }
+        return state * this.nSubIndices + subIndex;
+    }
     //Exports rule to unicode string
     exportRule(rule: Uint8Array): string {
         console.info(`exporting rule length ${rule.length}`);
@@ -301,31 +349,82 @@ export class Sim {
         
         return string;
     }
-    //Imports rule from unicode string directly into current rule buffer, setting rule to given
-    importRule(string: string) {
-        console.debug(string);
-        let compbytes = new Uint8Array(string.length);
-        compbytes = compbytes.map((_, i) => { return pcharMap[string.charCodeAt(i)]});
-        let x;
-        try {
-            x = lz4.decompress(compbytes);
-        }
-        catch {
-            console.error("invalid rule string");
-            return false;
-        }
-        const values = new Uint16Array(x.buffer);
-        //Extract values from decompressed values
-        let z = 0;
-        for (let i = 0; i < values.length; i++) {
-            for (let j = 0; j < 4; j++) {
-                this.ruleData[z] = (values[i] >> (j * 4)) & 0xF;
-                z += 1;
+    //Imports rule from compressed code string or a rule spec JSON object
+    importRule(r: string | RuleSpec) {
+        if (typeof(r) == "string") {
+            //Decompress rule string
+            let compbytes = new Uint8Array(r.length);
+            compbytes = compbytes.map((_, i) => { return pcharMap[r.charCodeAt(i)]});
+            let x;
+            try {
+                x = lz4.decompress(compbytes);
             }
+            catch {
+                console.error("invalid rule string");
+                return false;
+            }
+            const values = new Uint16Array(x.buffer);
+            //Extract values from decompressed values
+            let z = 0;
+            for (let i = 0; i < values.length; i++) {
+                for (let j = 0; j < 4; j++) {
+                    this.ruleData[z] = (values[i] >> (j * 4)) & 0xF;
+                    z += 1;
+                }
+            }
+            //Infer the number of states this must have
+            this.states = minStates(z)!;
+        } else if (typeof(r) == "object") {
+            console.assert(r.states <= 14 && r.states >= 2);
+            this.states = r.states;
+            //By default states will transition to themselves
+            for (let s = 0; s < r.states; s++) {
+                //This is the first index of the rules that have <s> as an input state
+                const j = this.ruleIndex(s, []);
+                //Fill values within the entire subindex range
+                this.ruleData.fill(s, j, j + this.nSubIndices);
+            }
+            for (const rl of r.rules) {
+                if (rl.N && Object.keys(rl.N).length > 0) {
+                    //All possible configurations of neighbor counts specified
+                    const neighborGroups = cartesianProduct(...Array.from(Object.values(rl.N)));
+                    //States which are specified
+                    const T = Object.keys(rl.N).map((v) => parseInt(v));
+                    for (const neighbors of neighborGroups) {
+                        //Neighbor counts for only specified states
+                        const N = Array<number>(r.states);
+                        T.forEach((v,i) => N[v]=neighbors[i]);
+                        //Unspecified states
+                        const nT = Array<number>(r.states).fill(0).map((v,i) => i);
+                        T.forEach((v) => nT.splice(nT.indexOf(v), 1))
+                        //Max sum of state counts for unspecified states
+                        const maxSum = 8 - N.reduce((p,c) => p+c);
+                        //Range of state counts
+                        const Nr = Array<number>(maxSum + 1).fill(0).map((v,i) => i);
+                        //All state counts which sum to max sum
+                        const NS = cartesianProduct(...Array<number[]>(r.states - T.length).fill(Nr))
+                            .filter((v,i) => v.reduce(((p,c) => p+c)) == maxSum);
+                        //Loop through all possible unspecified neighbor counts
+                        for (const Nn of NS) {
+                            //Make a copy of the neighbors array which contains specified states
+                            const Ni = [...N];
+                            //Fill in unspecified states
+                            nT.forEach((v,i) => Ni[v]=Nn[i]);
+                            //Set value in rule array
+                            this.ruleData[this.ruleIndex(rl.in, Ni)] = rl.out;
+                        }
+                    }
+                } else {
+                    //All with state <in> will change to state <out>
+                    const j = this.ruleIndex(rl.in, []);
+                    this.ruleData.fill(rl.out, j, j + this.nSubIndices);
+                }
+            }
+        } else {
+            console.error("error importing rule: argument is wrong type");
         }
-        //Infer the number of states this must have
-        this.states = minStates(z)!;
         this.regenRuleTex();
+        this._preset = "(imported)";
         return true;
     }
     customRule() {
@@ -393,7 +492,6 @@ export class Sim {
     onKey(e: KeyboardEvent) {
         const key = e.key.toLowerCase();
         this.keysPressed.add(key);
-        console.debug(key);
         switch(key) {
             case " ":
             case "space":

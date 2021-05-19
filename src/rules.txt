@@ -1,4 +1,6 @@
 game of life        :: %Cn9a´ģ+!!Ä!1!!!1"!!!!!!!
+wireworld           :: %Cn9a´ģ@!!!@!"!_PAC"!_@T"!v@2"!-0Ì!%qTTTTT!!!!
+brian's brain       :: %Cn9a´ģA!!!4!"!d1222,!¢!!!AC"!#'B!%+!q!!!!!!!!!
 worms               :: %Cn9a´ģ+!!Ä1!11"!122!!!!!
 hilbert             :: %Cn9a´ģ+!!Ä1!!!!2222!!!!!
 tricircuit          :: %Cn9a´ģ+!!Ä2"!!"22"1!!!!!

@@ -103,7 +103,7 @@
     <!-- <p id="rtinfo" class="front absolute top-0 left-0 p-1 m-0 text-light bg-dark text-sm">{{ frameRate }} </p> -->
     <transition name="growtl">
       <div class="textbox" v-if="importDialogue">
-        <p>paste rule string:</p>
+        <p>paste rule string or config:</p>
         <span class="material-icons" @click="importDialogue=false">cancel</span>
         <textarea ref="input-area" cols="76" rows="14"></textarea>
         <menu-button ref="import-button" style="{ margin: 1rem; margin-left: auto; }" @click="importRule()">import</menu-button>
@@ -114,7 +114,7 @@
 
 <script lang="ts">
 import { Options, Vue } from 'vue-class-component';
-import { Sim, randomizeDataBuffer } from '../sim'
+import { Sim, randomizeDataBuffer, RuleSpec } from '../sim'
 import Dropdown from './Dropdown.vue';
 import MenuButton from './MenuButton.vue';
 
@@ -168,7 +168,17 @@ for (const line of presetsRaw.split("\n")) {
       this.simulator.resetSim();
     },
     importRule() {
-      const success: boolean = this.simulator.importRule(this.$refs["input-area"].value);
+      const inpString = this.$refs["input-area"].value as string;
+      let input: string | RuleSpec = inpString;
+      if (inpString[0] == "{") {
+        input = JSON.parse(inpString) as RuleSpec;
+      }
+      let success = false;
+      try {
+        success = this.simulator.importRule(input);
+      } catch (error) {
+        success = false;
+      }
       if (success) {
         this.importDialogue = false;
       } else {
