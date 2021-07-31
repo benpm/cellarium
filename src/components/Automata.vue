@@ -1,14 +1,17 @@
 <template>
   <canvas id="glCanvas" ref="glCanvas"></canvas>
   <div ref="automataWindow" class="automataWindow grid items-start justify-center">
+    <div id="tooltip"><p style="visibility: hidden"></p></div>
     <div id="ui-container" class="grid overflow-visible justify-center grid-flow-col-dense place-items-center p-2 gap-2">
       <dropdown icon_name="edit" dropdown_title="Pen Settings" @hide-all="hideall = !hideall" :vd="hideall">
-        <div class="dropdown-item value-slider">
+        <!-- Pen size -->
+        <div class="dropdown-item value-slider" @mouseenter="setTooltip('pen size')">
           <span class="material-icons">line_weight</span>
           <input type="range" min="1" max="200" v-model="simulator.pen.size">
           <span class="label">{{ simulator.pen.size }}</span>
         </div>
-        <div class="dropdown-item value-slider">
+        <!-- Pen cell state -->
+        <div class="dropdown-item value-slider" @mouseenter="setTooltip('pen cell state')">
           <span class="material-icons">palette</span>
           <input type="range" min="1" :max="simulator.states - 1" v-model="simulator.pen.state">
           <span class="label">{{ simulator.pen.state }}</span>
@@ -16,12 +19,14 @@
       </dropdown>
 
       <dropdown icon_name="video_settings" dropdown_title="Simulation Settings" @hide-all="hideall = !hideall" :vd="hideall">
-        <div class="dropdown-item value-slider">
+        <!-- Simulation steps per frame -->
+        <div class="dropdown-item value-slider" @mouseenter="setTooltip('simulated steps per frame')">
           <span class="material-icons">speed</span>
           <input type="range" min="1" max="16" v-model="simulator.stepsPerFrame">
           <span class="label">{{ simulator.stepsPerFrame }}</span>
         </div>
-        <div class="dropdown-item value-slider">
+        <!-- Simulation size -->
+        <div class="dropdown-item value-slider" @mouseenter="setTooltip('simulation size')">
           <span class="material-icons">crop_free</span>
           <input type="range" min="8" max="12" :value="Math.floor(Math.log2(simulator.simSize))"
             @input="simulator.simSize = 2**Number($event.target.value)">
@@ -31,7 +36,7 @@
 
       <dropdown icon_name="edit_note" dropdown_title="Rule Settings" @hide-all="presetsShow = false; hideall = !hideall" :vd="hideall">
         <!-- Rule Preset -->
-        <div class="dropdown-item menu">
+        <div class="dropdown-item menu" @mouseenter="setTooltip('rule preset')">
           <span class="material-icons">toc</span>
           <div class="text">{{ simulator.preset }}</div>
           <button class="menu-open" @mousedown="presetsShow = !presetsShow" @mousedown.once="simulator.populatePresets($event.target)">
@@ -41,50 +46,44 @@
           </button>
         </div>
         <!-- Number of States Slider -->
-        <div class="dropdown-item value-slider">
+        <div class="dropdown-item value-slider" @mouseenter="setTooltip('number of rule states')">
           <span class="material-icons">style</span>
           <input type="range" name="nstates" id="nstates-slider" min="2" max="14" v-model.number="simulator.states">
           <span class="label">{{ simulator.states }}</span>
         </div>
         <!-- Import Rule -->
-        <div class="dropdown-item button-group">
+        <div class="dropdown-item button-group" @mouseenter="setTooltip('import rule from text')">
           <span class="material-icons">file_download</span>
           <menu-button @mousedown="importDialogue=true">import rule</menu-button>
         </div>
         <!-- Export Rule -->
-        <div class="dropdown-item button-group">
+        <div class="dropdown-item button-group" @mouseenter="setTooltip('export rule to text')">
           <span class="material-icons">file_upload</span>
           <menu-button @mousedown="simulator.export()">export to clipboard</menu-button>
         </div>
       </dropdown>
 
-      <button @keydown.stop="" class="options-button" @mousedown="simulator.pause = !simulator.pause">
-        <span v-if="simulator ? simulator.pause : false" class="material-icons">play_arrow</span>
-        <span v-if="simulator ? !simulator.pause : true" class="material-icons">pause</span>
-      </button>
+      <ui-button-toggle label="Pause / Play Sim" :action="() => simulator.pause = !simulator.pause"
+        :condition="() => simulator ? simulator.pause : false"
+        iconNameOn="play_arrow"
+        iconNameOff="pause"/>
 
-      <button @keydown.stop="" class="options-button" @mousedown="simulator.step()">
-        <span class="material-icons">skip_next</span>
-      </button>
+      <ui-button label="Step Forward One" :action="() => simulator.step()" iconName="skip_next" />
 
-      <button @keydown.stop="" class="options-button" @mousedown="simulator.newRule()">
-        <span class="material-icons">casino</span>
-      </button>
+      <ui-button label="New Random Rule" :action="() => simulator.newRule()" iconName="casino" />
 
-      <button @keydown.stop="" class="options-button" @mousedown="simulator.mutate()">
-        <span class="material-icons">shuffle</span>
-      </button>
+      <ui-button label="Mutate Current Rule" :action="() => simulator.mutate()" iconName="shuffle" />
 
       <dropdown icon_name="settings_suggest" dropdown_title="Rule Generation Settings" @hide-all="hideall = !hideall" :vd="hideall">
         <!-- Zero State Slider -->
-        <div class="dropdown-item value-slider">
+        <div class="dropdown-item value-slider" @mouseenter="setTooltip('rule generation chance of zero state')">
           <span class="material-icons">battery_charging_full</span>
           <input type="range" name="nstates" id="nstates-slider"
             min="0.1" max="2.0" step="0.01" v-model.number="simulator.zeroChanceMultiplier">
           <span class="label">{{ simulator.zeroChanceMultiplier }}</span>
         </div>
         <!-- Mutate Multiplier Slider -->
-        <div class="dropdown-item value-slider">
+        <div class="dropdown-item value-slider" @mouseenter="setTooltip('rule mutate amount')">
           <span class="material-icons">leaderboard</span>
           <input type="range" name="nstates" id="nstates-slider"
             min="0.1" max="5.0" step="0.1" v-model.number="simulator.mutateRate">
@@ -92,15 +91,11 @@
         </div>
       </dropdown>
 
-      <button @keydown.stop="" class="options-button" @mousedown="fillRandom()">
-        <span class="material-icons">format_color_fill</span>
-      </button>
+      <ui-button label="Random Fill Sim" :action="fillRandom" iconName="format_color_fill" />
 
-      <button @keydown.stop="" class="options-button" @mousedown="simulator.clear()">
-        <span class="material-icons">clear</span>
-      </button>
+      <ui-button label="Clear Sim" :action="() => simulator.clear()" iconName="clear" />
     </div>
-    <!-- <p id="rtinfo" class="front absolute top-0 left-0 p-1 m-0 text-light bg-dark text-sm">{{ frameRate }} </p> -->
+
     <transition name="growtl">
       <div class="textbox" v-if="importDialogue">
         <p>paste rule string or config:</p>
@@ -117,6 +112,8 @@ import { Options, Vue } from 'vue-class-component';
 import { Sim, randomizeDataBuffer, RuleSpec } from '../sim'
 import Dropdown from './Dropdown.vue';
 import MenuButton from './MenuButton.vue';
+import UIButton from './UIButton.vue';
+import UIButtonToggle from './UIButtonToggle.vue';
 
 const shaders = {
   "colormap": require('../shaders/colormap.glsl').default,
@@ -136,7 +133,9 @@ for (const line of presetsRaw.split("\n")) {
 @Options({
   components: {
     "dropdown": Dropdown,
-    "menu-button": MenuButton
+    "menu-button": MenuButton,
+    "ui-button": UIButton,
+    "ui-button-toggle": UIButtonToggle
   },
   props: {
   },
@@ -249,5 +248,4 @@ export default class Automata extends Vue {}
     background: magenta;
     border: white 1px solid;
   }
-
 </style>

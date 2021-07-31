@@ -154,6 +154,12 @@
         font-size: 10px;
         resize: none;
     }
+
+    /* Tooltip */
+    #tooltip p {
+        @apply bg-accent text-black inline p-1 m-0 rounded-sm border-black;
+        border-width: 3px;
+    }
 }
 
 button .material-icons {

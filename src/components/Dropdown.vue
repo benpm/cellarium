@@ -1,6 +1,9 @@
 <template>
   <button ref="button" class="options-button"
-    :class="shown ? 'button-active' : ''" @mousedown="onClick()">
+    :class="shown ? 'button-active' : ''"
+    @mousedown="onClick()"
+    @mouseenter="setTooltip(dropdown_title)"
+    @mouseleave="setTooltip()">
     <span class="material-icons">{{ icon_name }}</span>
     <transition name="fade">
       <div @mousedown.stop="" class="rounded dropdown" v-if="shown">

@@ -1,11 +1,10 @@
-![banner](banner.gif)
+<div style="text-align:center"><img src="logo.png" /></div>
 
-# Cellarium
-<*WIP Vue Port*>
-
-Cellular automata zoo that runs in your browser. Simulation is done through a fragment shader so is quite fast.
+Cellular automata zoo that runs in your browser! Simulate arbitrary multi-state rules on the GPU.
 
 [*Play with it here!*](https://benpm.github.io/webgl-cellular-automata)
+
+![banner](banner.gif)
 
 ## Controls
 ### Interaction
@@ -37,4 +36,8 @@ Cellular automata zoo that runs in your browser. Simulation is done through a fr
 Totalistic 2D automata are a set of automata that include Conway's Game of Life, Wireworld, Brian's Brain, and more, which will be added as presets soon. Help me find new interesting rules to include in the presets!
 
 ## How it Works
-*Coming soon!*
+Rules are represented by linear byte arrays that are packed into 2D textures. To determine state change for a given cell, the texture is accessed by 1D index.
+
+This 1D index is calculated from an "input state", which is composed of the current cell state and state of the cells neighbors. Again, this is a *totalistic* cellular automaton simulator, so what actually goes into the input state is the *total* number of states of neighbors. Their position around the current cell does not get taken into account when calculating the input state.
+
+Since it is totalistic, the neighbor state counts must always sum to 8, as there are 8 total cells in the neighborhood. The tricky part here is ensuring that the 1D index space calculated from all possible input states is contiguous. Meaning, there must be a unique index for each possible input state, with no unused indices.
