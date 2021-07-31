@@ -34,7 +34,7 @@
         <div class="dropdown-item menu">
           <span class="material-icons">toc</span>
           <div class="text">{{ simulator.preset }}</div>
-          <button class="menu-open" @click="presetsShow = !presetsShow" @click.once="simulator.populatePresets($event.target)">
+          <button class="menu-open" @mousedown="presetsShow = !presetsShow" @mousedown.once="simulator.populatePresets($event.target)">
             <span class="material-icons">arrow_drop_down_circle</span>
             <div class="menu-items" id="presets-menu-items" v-show="presetsShow">
             </div>
@@ -49,29 +49,29 @@
         <!-- Import Rule -->
         <div class="dropdown-item button-group">
           <span class="material-icons">file_download</span>
-          <menu-button @click="importDialogue=true">import rule</menu-button>
+          <menu-button @mousedown="importDialogue=true">import rule</menu-button>
         </div>
         <!-- Export Rule -->
         <div class="dropdown-item button-group">
           <span class="material-icons">file_upload</span>
-          <menu-button @click="simulator.export()">export to clipboard</menu-button>
+          <menu-button @mousedown="simulator.export()">export to clipboard</menu-button>
         </div>
       </dropdown>
 
-      <button @keydown.stop="" class="options-button" @click="simulator.pause = !simulator.pause">
+      <button @keydown.stop="" class="options-button" @mousedown="simulator.pause = !simulator.pause">
         <span v-if="simulator ? simulator.pause : false" class="material-icons">play_arrow</span>
         <span v-if="simulator ? !simulator.pause : true" class="material-icons">pause</span>
       </button>
 
-      <button @keydown.stop="" class="options-button" @click="simulator.step()">
+      <button @keydown.stop="" class="options-button" @mousedown="simulator.step()">
         <span class="material-icons">skip_next</span>
       </button>
 
-      <button @keydown.stop="" class="options-button" @click="simulator.newRule()">
+      <button @keydown.stop="" class="options-button" @mousedown="simulator.newRule()">
         <span class="material-icons">casino</span>
       </button>
 
-      <button @keydown.stop="" class="options-button" @click="simulator.mutate()">
+      <button @keydown.stop="" class="options-button" @mousedown="simulator.mutate()">
         <span class="material-icons">shuffle</span>
       </button>
 
@@ -92,11 +92,11 @@
         </div>
       </dropdown>
 
-      <button @keydown.stop="" class="options-button" @click="fillRandom()">
+      <button @keydown.stop="" class="options-button" @mousedown="fillRandom()">
         <span class="material-icons">format_color_fill</span>
       </button>
 
-      <button @keydown.stop="" class="options-button" @click="simulator.clear()">
+      <button @keydown.stop="" class="options-button" @mousedown="simulator.clear()">
         <span class="material-icons">clear</span>
       </button>
     </div>
@@ -104,9 +104,9 @@
     <transition name="growtl">
       <div class="textbox" v-if="importDialogue">
         <p>paste rule string or config:</p>
-        <span class="material-icons" @click="importDialogue=false">cancel</span>
+        <span class="material-icons" @mousedown="importDialogue=false">cancel</span>
         <textarea ref="input-area" cols="76" rows="14"></textarea>
-        <menu-button ref="import-button" style="{ margin: 1rem; margin-left: auto; }" @click="importRule()">import</menu-button>
+        <menu-button ref="import-button" style="{ margin: 1rem; margin-left: auto; }" @mousedown="importRule()">import</menu-button>
       </div>
     </transition>
   </div>
@@ -181,6 +181,8 @@ for (const line of presetsRaw.split("\n")) {
       }
       if (success) {
         this.importDialogue = false;
+        this.hideall = true;
+        this.simulator.preset = "(imported)";
       } else {
         this.$refs["import-button"].anim = "button-error";
       }

@@ -69,7 +69,7 @@ for (let i = 0; i < pchars.length; i++) {
 
 export interface RuleSpec {
     states: number;
-    rules: Array<{in: number; out: number; N: Record<number, Array<number>>}>;
+    rules: Array<{in: number; out: number; alt?: number; N?: Record<number, Array<number>>}>;
 }
 
 //This has to live outside of the class otherwise it's really slow for some reason
@@ -205,7 +205,7 @@ export class Sim {
             const item = document.createElement("span");
             item.innerHTML = preset[0];
             item.className = "menu-item";
-            item.addEventListener("click", () => {
+            item.addEventListener("mousedown", () => {
                 this.preset = preset[0];
             });
             menuItems?.appendChild(item);
@@ -274,9 +274,7 @@ export class Sim {
     }
     onScrollWheel(e: WheelEvent) {
         const scroll = (e.deltaY < 0 ? 1 : -1);
-        if (this.keysPressed.has("alt")) {
-            this.stepsPerFrame = Math.max(1, this.stepsPerFrame + scroll);
-        } else if (this.keysPressed.has("shift")) {
+        if (this.keysPressed.has("shift")) {
             const scrollAmount = Math.ceil(this.pen.size / 16);
             this.pen.size = Math.max(1, this.pen.size + scroll * scrollAmount);
         } else {
@@ -387,7 +385,8 @@ export class Sim {
             for (const rl of r.rules) {
                 if (rl.N && Object.keys(rl.N).length > 0) {
                     //All possible configurations of neighbor counts specified
-                    const neighborGroups = cartesianProduct(...Array.from(Object.values(rl.N)));
+                    const neighborGroups = cartesianProduct(...Array.from(Object.values(rl.N)))
+                        .filter((v,i) => v.reduce(((p,c) => p+c)) <= 8);
                     //States which are specified
                     const T = Object.keys(rl.N).map((v) => parseInt(v));
                     for (const neighbors of neighborGroups) {
@@ -411,7 +410,9 @@ export class Sim {
                             //Fill in unspecified states
                             nT.forEach((v,i) => Ni[v]=Nn[i]);
                             //Set value in rule array
-                            this.ruleData[this.ruleIndex(rl.in, Ni)] = rl.out;
+                            const indx = this.ruleIndex(rl.in, Ni);
+                            if (this.ruleData[indx] == rl.in)
+                                this.ruleData[indx] = rl.out;
                         }
                     }
                 } else {
@@ -424,7 +425,6 @@ export class Sim {
             console.error("error importing rule: argument is wrong type");
         }
         this.regenRuleTex();
-        this._preset = "(imported)";
         return true;
     }
     customRule() {

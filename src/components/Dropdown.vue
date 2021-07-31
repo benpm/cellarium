@@ -1,8 +1,9 @@
 <template>
-  <button ref="button" class="options-button" :class="shown ? 'button-active' : ''" @click="onClick()">
+  <button ref="button" class="options-button"
+    :class="shown ? 'button-active' : ''" @mousedown="onClick()">
     <span class="material-icons">{{ icon_name }}</span>
     <transition name="fade">
-      <div @click.stop="" class="rounded dropdown" v-if="shown">
+      <div @mousedown.stop="" class="rounded dropdown" v-if="shown">
         <h1>{{ dropdown_title }}</h1>
         <slot></slot>
         <div class="sidebg"></div>
