@@ -6,9 +6,12 @@ on:
 
 jobs:
   build:
-    runs-on: node12
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 14.15
       - name: Build Vue App
         run: |
           npm ci

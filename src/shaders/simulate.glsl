@@ -59,17 +59,14 @@ void main(void) {
 
     // Determine the 1D index into the rule texture
     int subIndex = 0;
-    int x = uStates;
     int y = 8;
-    for (int i = 0; i < 14; i++) {
-        if (i < uStates && i > 0) {
-            int v = nCounts[i];
-            if (v > 0) {
-                subIndex += binomial(y + x - 1, x - 1) - binomial(y - v + x - 1, x - 1);
-            }
-            x -= 1;
-            y -= v;
+    for (int i = 1; i < 14; i++) {
+        int v = nCounts[i];
+        if (v > 0) {
+            int x = uStates - i;
+            subIndex += binomial(y + x, x) - binomial(y - v + x, x);
         }
+        y -= v;
     }
     // Compute final rule index given current state and neighbor states
     int ruleIndex = curstate * uSubIndices + subIndex;
