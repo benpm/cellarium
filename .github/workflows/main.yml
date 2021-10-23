@@ -2,7 +2,7 @@ name: build
 
 on:
   push:
-    branches: [ vue_port ]
+    branches: [ master ]
 
 jobs:
   build:
