@@ -1,9 +1,11 @@
+#version 300 es
 /** Fragment shader that simply displays a texture */
 
 precision mediump float;
 
-varying vec2 vTextureCoord;     // Texture coordinates 0.0 to 1.0
+in vec2 vTextureCoord;     // Texture coordinates 0.0 to 1.0
 uniform sampler2D uSampler;     // Texture to display
+out vec4 fragColor;
 
 int bsample(vec2 pos) {
     ivec4 val = ivec4(floor(texture2D(uSampler, pos) * 255.0 + 0.5));
@@ -30,5 +32,5 @@ void main(void) {
         t(b / 10.0), 
         t(log(b) / 10.0), 
         t(log(b) / 25.0));
-    gl_FragColor = vec4(color, 1.0);
+    fragColor = vec4(color, 1.0);
 }

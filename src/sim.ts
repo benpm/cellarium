@@ -231,16 +231,6 @@ export class Sim {
             this.cam.y = fmod(this.cam.panstartcam.y + (this.cam.panstartmouse.y - y)
                 / this.cam.zoom, this.simSize * 2);
         }
-    
-        this.gl.useProgram(this.drawProgram!);
-        this.gl.uniform4fv(this.drawUniforms.mouse.loc, this.drawUniforms.mouse.val);
-    
-        this.gl.useProgram(this.colorProgram!);
-        this.colorUniforms.mouse.val[0] = (x);
-        this.colorUniforms.mouse.val[1] = (y);
-        this.colorUniforms.mouse.val[2] = this.pen.state;
-        this.colorUniforms.mouse.val[3] = this.drawUniforms.mouse.val[3];
-        this.gl.uniform4fv(this.colorUniforms.mouse.loc, this.colorUniforms.mouse.val);
     }
     clickOn(e: MouseEvent) {
         switch (e.button) {
@@ -559,12 +549,9 @@ export class Sim {
         //Texture A
         this.texA = this.texA || this.gl.createTexture()!;
         this.gl.bindTexture(this.gl.TEXTURE_2D, this.texA);
-        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.R8, this.simSize, this.simSize,
-            0, this.gl.RED, this.gl.UNSIGNED_BYTE, texDataBuffer.subarray(0, this.simSize**2));
-        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.REPEAT);
-        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.REPEAT);
-        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
-        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.NEAREST);
+        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.R8UI, this.simSize, this.simSize,
+            0, this.gl.RED_INTEGER, this.gl.UNSIGNED_BYTE, texDataBuffer.subarray(0, this.simSize**2));
+        this.texConfig(this.gl.REPEAT);
         //Framebuffer A
         this.fbA = this.fbA || this.gl.createFramebuffer()!;
         this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.fbA);
@@ -572,12 +559,9 @@ export class Sim {
         //Texture B
         this.texB = this.texB || this.gl.createTexture()!;
         this.gl.bindTexture(this.gl.TEXTURE_2D, this.texB);
-        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.R8, this.simSize, this.simSize,
-            0, this.gl.RED, this.gl.UNSIGNED_BYTE, null);
-        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.REPEAT);
-        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.REPEAT);
-        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
-        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.NEAREST);
+        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.R8UI, this.simSize, this.simSize,
+            0, this.gl.RED_INTEGER, this.gl.UNSIGNED_BYTE, null);
+        this.texConfig(this.gl.REPEAT);
         //Framebuffer B
         this.fbB = this.fbB || this.gl.createFramebuffer()!;
         this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.fbB);
@@ -635,6 +619,8 @@ export class Sim {
         this.cam.x += this.cam.move.x;
         this.cam.y += this.cam.move.y;
         this.gl.uniform3fv(this.colorUniforms.cam.loc, [this.cam.x, this.cam.y, this.cam.zoom]);
+        this.colorUniforms.mouse.val[0] = this.mouse.x;
+        this.colorUniforms.mouse.val[1] = this.mouse.y;
         this.colorUniforms.mouse.val[2] = this.pen.state;
         this.colorUniforms.mouse.val[3] = this.drawUniforms.mouse.val[3];
         this.gl.uniform4fv(this.colorUniforms.mouse.loc, this.colorUniforms.mouse.val);
@@ -656,25 +642,19 @@ export class Sim {
     }
     buildBinomial() {
         console.info("Building binomial coefficient tex...");
-        const data = new Uint8Array(32 * 32 * 4);
+        const data = new Uint32Array(32 * 32);
         data.fill(0);
         for (let n = 0; n < 32; n++) {
             for (let k = 0; k < 32; k++) {
                 const value = binomial(n, k);
-                const index = (k * 32 + n) * 4;
-                //Pack result into the four RGBA bytes
-                data[index + 0] = value & 0xFF;
-                data[index + 1] = (value >> 8) & 0xFF;
-                data[index + 2] = (value >> 16) & 0xFF;
-                data[index + 3] = (value >> 24) & 0xFF;
+                const index = k * 32 + n;
+                data[index] = value;
             }
         }
         this.binomialTex = this.gl.createTexture()!;
         this.gl.bindTexture(this.gl.TEXTURE_2D, this.binomialTex);
-        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, 32, 32, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, data);
-        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
-        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
-        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
+        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.R32UI, 32, 32, 0, this.gl.RED_INTEGER, this.gl.UNSIGNED_INT, data);
+        this.texConfig();
     }
     compileShader(name: string, code: string, type: number): WebGLShader | null {
         const shader: WebGLShader | null = this.gl.createShader(type);
@@ -718,10 +698,8 @@ export class Sim {
         this.gl.useProgram(this.simProgram!);
         this.ruleTex = this.ruleTex || this.gl.createTexture()!;
         this.gl.bindTexture(this.gl.TEXTURE_2D, this.ruleTex);
-        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.LUMINANCE, 1024, 1024, 0, this.gl.LUMINANCE, this.gl.UNSIGNED_BYTE, this.ruleData);
-        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
-        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
-        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
+        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.R8UI, 1024, 1024, 0, this.gl.RED_INTEGER, this.gl.UNSIGNED_BYTE, this.ruleData);
+        this.texConfig();
         
         this.gl.uniform1i(this.simUniforms.states.loc, this.states);
         this.gl.uniform1i(this.simUniforms.subindices.loc, this.nSubIndices);
@@ -789,7 +767,9 @@ export class Sim {
         this.gl.enableVertexAttribArray(aVertexPosition);
     
         //Rule texture
-        this.setRule([0,0,0,1,0,0,0,0,0,0,0,1,1,0,0,0,0,0]);
+        this.setRule([
+            0,0,0,1,0,0,0,0,0,
+            0,0,1,1,0,0,0,0,0]);
     
         //Initialize uniforms
         this.gl.uniform1i(this.simUniforms.sampler.loc, 0);
@@ -808,10 +788,7 @@ export class Sim {
         this.colorMapTex = this.gl.createTexture()!;
         this.gl.bindTexture(this.gl.TEXTURE_2D, this.colorMapTex);
         this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGB, 14, 1, 0, this.gl.RGB, this.gl.UNSIGNED_BYTE, this.colorMap);
-        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
-        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
-        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
-        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.NEAREST);
+        this.texConfig();
     
         //Uniforms
         this.colorUniforms = {
@@ -857,6 +834,13 @@ export class Sim {
     
         //Set these uniforms once
         this.gl.uniform1i(this.drawUniforms.sampler.loc, 0);
+    }
+    texConfig(wrap: number = this.gl.CLAMP_TO_EDGE) {
+        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, wrap);
+        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, wrap);
+        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.NEAREST);
+        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.NEAREST);
+        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAX_LEVEL, 0);
     }
     resize() {
         this.gl.useProgram(this.colorProgram!);
