@@ -18,9 +18,9 @@ vec4 colorFromState(uint state) {
 
 void main(void) {
     // Grab coordinate into simulation texture
-    vec2 coord = uCam.xy + (vTextureCoord * (uScreen / uCam.z));
+    vec2 coord = (uCam.xy + (vTextureCoord * (uScreen / uCam.z))) / uSimSize;
     // Get automaton state
-    uint state = texelFetch(uSampler, ivec2(coord), 0).r;
+    uint state = texture(uSampler, coord).r;
     // Reference colormap tex to draw color to screen
     fragColor = colorFromState(state);
 

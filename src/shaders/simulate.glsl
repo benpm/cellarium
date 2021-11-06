@@ -54,3 +54,4 @@ void main(void) {
     uint newstate = texelFetch(uRule, ivec2(ruleIndex % 1024, ruleIndex / 1024), 0).r;
 
     fragColor = uvec3(newstate);
+}
