@@ -93,7 +93,7 @@
 
       <ui-button label="Random Fill Sim" :action="fillRandom" iconName="format_color_fill" />
 
-      <ui-button label="Clear Sim" :action="() => simulator.clear()" iconName="clear" />
+      <ui-button label="Clear Sim" :action="() => simulator.resetSim()" iconName="clear" />
     </div>
 
     <transition name="growtl">
@@ -164,7 +164,7 @@ for (const line of presetsRaw.split("\n")) {
     },
     fillRandom() {
       randomizeDataBuffer(this.simulator.states);
-      this.simulator.resetSim();
+      this.simulator.texSetup();
     },
     importRule() {
       const inpString = this.$refs["input-area"].value as string;

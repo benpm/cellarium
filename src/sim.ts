@@ -431,14 +431,7 @@ export class Sim {
     }
     clear() {
         this.flip = false;
-        if (this.fbA && this.fbB) {
-            this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.fbA);
-            this.gl.clearColor(0, 0, 0, 1.0);
-            this.gl.clear(this.gl.COLOR_BUFFER_BIT);
-            this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.fbB);
-            this.gl.clearColor(0, 0, 0, 1.0);
-            this.gl.clear(this.gl.COLOR_BUFFER_BIT);
-        }
+        texDataBuffer.fill(0);
     }
     germinate() {
         // Clear with a single spot in the center
@@ -448,7 +441,6 @@ export class Sim {
         this.texSetup();
     }
     resetSim() {
-        // Clear with a single spot in the center
         this.clear();
         this.texSetup();
     }
@@ -499,7 +491,7 @@ export class Sim {
                 break;
             case "f":
                 randomizeDataBuffer(this._states);
-                this.resetSim();
+                this.texSetup();
                 break;
             case "m":
                 this.mutate();
@@ -507,7 +499,7 @@ export class Sim {
             case "c":
             case "backspace":
             case "delete":
-                this.clear();
+                this.resetSim();
                 break;
             case "arrowleft":
                 this.cam.move.x = -3;
