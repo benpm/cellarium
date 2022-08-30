@@ -2,7 +2,7 @@
 
 Cellular automata zoo that runs in your browser! Simulate arbitrary multi-state rules on the GPU.
 
-[*Play with it here!*](https://benpm.github.io/webgl-cellular-automata)
+[*Play with it here!*](https://benpm.github.io/cellarium)
 
 ![banner](banner.gif)
 

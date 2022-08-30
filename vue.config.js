@@ -7,5 +7,5 @@ module.exports = {
       .loader('raw-loader')
       .end()
   },
-  publicPath: "/webgl-cellular-automata/"
+  publicPath: "/cellarium/"
 }
