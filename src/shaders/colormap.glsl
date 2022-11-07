@@ -9,7 +9,8 @@ uniform sampler2D uColorMap;    // Colors to be used for states
 uniform vec3 uCam;              // Camera: x, y (pixels), zoom
 uniform vec2 uScreen;           // Screen size in pixels
 uniform vec2 uSimSize;          // Size of the simulation texture
-uniform vec4 uMouse;            // Position of mouse on screen, plus left / right button states
+uniform uint uRenderSeP;        // Render States else Paint - truthy switch
+// uniform vec4 uMouse;            // Mouse: x, y, z=pen state (-1 indicates 'no state'), w=pen size
 out vec4 fragColor;
 
 vec4 colorFromState(uint state) {
@@ -24,15 +25,15 @@ void main(void) {
     // Reference colormap tex to draw color to screen
     fragColor = colorFromState(state);
 
-    // Calculate toroidal distance to mouse
-    vec2 offset = mod(uCam.xy, vec2(1.0));
-    float pMouseDist = distance(
-        ceil((vTextureCoord * uScreen) / uCam.z + offset),
-        ceil((uMouse.xy) / uCam.z + offset)
-    );
+    // // Calculate toroidal distance to mouse
+    // vec2 offset = mod(uCam.xy, vec2(1.0));
+    // float pMouseDist = distance(
+    //     ceil((vTextureCoord * uScreen) / uCam.z + offset),
+    //     ceil((uMouse.xy) / uCam.z + offset)
+    // );
 
-    // Mouse click adds cells
-    if (floor(pMouseDist + 1.0) == ceil(uMouse.w)) {
-        fragColor = colorFromState(uint(uMouse.z));
-    }
+    // // Mouse click adds cells
+    // if (floor(pMouseDist + 1.0) == ceil(uMouse.w)) {
+    //     fragColor = colorFromState(uint(uMouse.z));
+    // }
 }

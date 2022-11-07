@@ -3,11 +3,14 @@
 
 precision mediump float;
 
-uniform highp usampler2D uSampler;     // Input states texture
-uniform highp usampler2D uRule;        // The cellular automata rule
+uniform highp usampler2D uStates;     // Input states texture
 uniform highp usampler2D uBinomial;    // Pre-computed binomial coefficents (n and k up to 32)
+uniform highp usampler2D uRule;        // The cellular automata rule
+
+
+
 uniform vec2 uSize;             // Size of simulation canvas in pixels
-uniform int uStates;            // Number of states in this rule (MAX 14)
+uniform int uNumStates;            // Number of states in this rule (MAX 14)
 uniform int uSubIndices;        // Number pf subrule indices
 
 in vec2 vTextureCoord;     // Texture coordinates 0.0 to 1.0
@@ -23,7 +26,7 @@ void main(void) {
     // Texel coordinate
     ivec2 pTexCoord = ivec2(vTextureCoord.xy * uSize.xy);
 
-    int curstate = int(texture(uSampler, vTextureCoord).r);
+    int curstate = int(texture(uStates, vTextureCoord).r);
 
     // Counts of each neighbor type
     int nCounts[14] = int[](0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
@@ -32,7 +35,7 @@ void main(void) {
     // Determine neighbor counts
     for (int x = -1; x <= 1; x += 1) {
         for (int y = -1; y <= 1; y += 1) {
-            uint v = texture(uSampler, vTextureCoord + (vec2(x, y) / uSize)).r;
+            uint v = texture(uStates, vTextureCoord + (vec2(x, y) / uSize)).r;
             nCounts[v] += 1;
         }
     }
@@ -43,7 +46,7 @@ void main(void) {
     for (int i = 1; i < 14; i++) {
         int v = nCounts[i];
         if (v > 0) {
-            int x = uStates - i;
+            int x = uNumStates - i;
             subIndex += binomial(y + x, x) - binomial(y - v + x, x);
         }
         y -= v;

@@ -1,9 +1,3 @@
-# What are we doing?
-1. Simulate Conway (or some other game with 2 states)
-2. Assign each cell an RGB color
-3. If a cell transitions from dead to alive, its color becomes the average of the cells which brought it to life
-4. What colors arise?
-
 # What is this branch for?
 I want to understand what configurations are already present, so that I perform the smallest amount of rework.
 

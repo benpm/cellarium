@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import lz4 from "lz4js";
 import { rule } from "postcss";
 
@@ -73,12 +74,24 @@ export interface RuleSpec {
 }
 
 //This has to live outside of the class otherwise it's really slow for some reason
-const texDataBuffer = new Uint8Array(4096**2);
+const stateTexDataBuffer = new Uint8Array(4096**2);
+const paintTexDataBuffer = new Uint8Array(4096**2*3);
+
+function randomizePaintTexDataBuffer(){
+    for (let i = 0; i < paintTexDataBuffer.length; i++){
+        paintTexDataBuffer[i] = Math.floor(Math.random());
+    }
+}
+
+function randomizeStateTexDataBuffer(m: number) {
+    for (let i = 0; i < stateTexDataBuffer.length; i++) {
+        stateTexDataBuffer[i] = Math.floor(Math.random() * m);
+    }
+}
 
 export function randomizeDataBuffer(m: number) {
-    for (let i = 0; i < texDataBuffer.length; i++) {
-        texDataBuffer[i] = Math.floor(Math.random() * m);
-    }
+    randomizeStateTexDataBuffer(m);
+    randomizePaintTexDataBuffer();
 }
 
 export class Sim {
@@ -137,8 +150,10 @@ export class Sim {
     flip = false;                               // Indicates framebuffer flip
     private fbA?: WebGLFramebuffer;                     // First framebuffer
     private fbB?: WebGLFramebuffer;                     // Second framebuffer
-    private texA?: WebGLTexture;
-    private texB?: WebGLTexture;
+    private stateTexA?: WebGLTexture;
+    private stateTexB?: WebGLTexture;
+    private paintTexA?: WebGLTexture;
+    private paintTexB?: WebGLTexture;
     steps = 0;                                  // Simulation steps so far
     frames = 0;                                 // Rendered frames so far
     lastFPSSample = Date.now();                 // Millisecond timestap of last FPS sample
@@ -158,6 +173,7 @@ export class Sim {
     zeroChanceMultiplier = 0.5;
     mutateRate = 1.0;
     keysPressed = new Set<string>();
+    renderStatesElsePaints = true;
     
     constructor(
         private canvas: HTMLCanvasElement,
@@ -284,14 +300,14 @@ export class Sim {
         }
     }
     randomRule() {
-        const length = ruleLength(this.states);
+        const length = ruleLength(this.numStates);
         const rule = new Uint8Array(length);
-        const zeroChance = Math.max(1 - (1 / Math.pow(this.states, this.zeroChanceMultiplier)), this.zeroChanceMultiplier);
+        const zeroChance = Math.max(1 - (1 / Math.pow(this.numStates, this.zeroChanceMultiplier)), this.zeroChanceMultiplier);
         for (let i = 0; i < length; i++) {
             if (Math.random() < zeroChance) {
                 rule[i] = 0;
             } else {
-                rule[i] = Math.floor(Math.random() * this.states);
+                rule[i] = Math.floor(Math.random() * this.numStates);
             }
         }
         return rule;
@@ -304,7 +320,7 @@ export class Sim {
     ruleIndex(state: number, neighbors: number[]) {
         let subIndex = 0;
         //The number of
-        let x = this.states;
+        let x = this.numStates;
         //The number of neighbors unaccounted for
         let y = 8;
         for (let i = 1; i < neighbors.length; i++) {
@@ -361,10 +377,10 @@ export class Sim {
                 }
             }
             //Infer the number of states this must have
-            this.states = minStates(z)!;
+            this.numStates = minStates(z)!;
         } else if (typeof(r) == "object") {
             console.assert(r.states <= 14 && r.states >= 2);
-            this.states = r.states;
+            this.numStates = r.states;
             //By default states will transition to themselves
             for (let s = 0; s < r.states; s++) {
                 //This is the first index of the rules that have <s> as an input state
@@ -421,23 +437,25 @@ export class Sim {
         const string = prompt("input some text:");
         if (string) {
             const states = minStates(string.length);
-            const rule = new Uint8Array(ruleLength(this.states));
+            const rule = new Uint8Array(ruleLength(this.numStates));
             rule.fill(0);
             for (let i = 0; i < string.length; i++) {
-                rule[i] = string.charCodeAt(i) % this.states;
+                rule[i] = string.charCodeAt(i) % this.numStates;
             }
             this.setRule(rule);
         }
     }
     clear() {
         this.flip = false;
-        texDataBuffer.fill(0);
+        stateTexDataBuffer.fill(0);
+        paintTexDataBuffer.fill(0);
     }
     germinate() {
         // Clear with a single spot in the center
         this.clear();
         const i = (this.simSize * (this.simSize / 2));
-        texDataBuffer[i] = this.pen.state;
+        stateTexDataBuffer[i] = this.pen.state;
+        paintTexDataBuffer[i*3] = 255; // Let's make the starting cell RED
         this.texSetup();
     }
     resetSim() {
@@ -453,7 +471,7 @@ export class Sim {
         this._preset = "...from clipboard";
     }
     export() {
-        document.querySelector<HTMLInputElement>("#_clipboard")!.value = this.exportRule(this.ruleData.slice(0, ruleLength(this.states)));
+        document.querySelector<HTMLInputElement>("#_clipboard")!.value = this.exportRule(this.ruleData.slice(0, ruleLength(this.numStates)));
         document.querySelector<HTMLInputElement>("#_clipboard")?.select();
         document.querySelector<HTMLInputElement>("#_clipboard")?.focus();
         document.execCommand("copy");
@@ -463,11 +481,11 @@ export class Sim {
         this.doStep = true;
     }
     mutate() {
-        const length = ruleLength(this.states);
+        const length = ruleLength(this.numStates);
         const nMutate = Math.ceil((length / 20) * this.mutateRate);
         for (let i = 0; i < nMutate; i++) {
             const j = Math.floor(Math.random() * length);
-            this.ruleData[j] = Math.floor(Math.random() * this.states);
+            this.ruleData[j] = Math.floor(Math.random() * this.numStates);
         }
         this.regenRuleTex();
     }
@@ -516,7 +534,7 @@ export class Sim {
             default:
                 if (!isNaN(parseInt(key))) {
                     const n = parseInt(key);
-                    if (n >= 1 && n < this.states) {
+                    if (n >= 1 && n < this.numStates) {
                         this.pen.state = n;
                     }
                 }
@@ -538,26 +556,27 @@ export class Sim {
         }
     }
     texSetup() {
-        //Texture A
-        this.texA = this.texA || this.gl.createTexture()!;
-        this.gl.bindTexture(this.gl.TEXTURE_2D, this.texA);
-        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.R8UI, this.simSize, this.simSize,
-            0, this.gl.RED_INTEGER, this.gl.UNSIGNED_BYTE, texDataBuffer.subarray(0, this.simSize**2));
-        this.texConfig(this.gl.REPEAT);
         //Framebuffer A
         this.fbA = this.fbA || this.gl.createFramebuffer()!;
         this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.fbA);
-        this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.texA, 0);
-        //Texture B
-        this.texB = this.texB || this.gl.createTexture()!;
-        this.gl.bindTexture(this.gl.TEXTURE_2D, this.texB);
+        //StateTexture A
+        this.stateTexA = this.stateTexA || this.gl.createTexture()!;
+        this.gl.bindTexture(this.gl.TEXTURE_2D, this.stateTexA);
         this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.R8UI, this.simSize, this.simSize,
-            0, this.gl.RED_INTEGER, this.gl.UNSIGNED_BYTE, null);
+            0, this.gl.RED_INTEGER, this.gl.UNSIGNED_BYTE, stateTexDataBuffer.subarray(0, this.simSize**2));
         this.texConfig(this.gl.REPEAT);
+        this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.stateTexA, 0);
+
         //Framebuffer B
         this.fbB = this.fbB || this.gl.createFramebuffer()!;
         this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.fbB);
-        this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.texB, 0);
+        //StateTexture B
+        this.stateTexB = this.stateTexB || this.gl.createTexture()!;
+        this.gl.bindTexture(this.gl.TEXTURE_2D, this.stateTexB);
+        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.R8UI, this.simSize, this.simSize,
+            0, this.gl.RED_INTEGER, this.gl.UNSIGNED_BYTE, null);
+        this.texConfig(this.gl.REPEAT);
+        this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.stateTexB, 0);
     
         //Pass new simulation size to shaders
         this.gl.useProgram(this.simProgram!);
@@ -584,7 +603,9 @@ export class Sim {
                 //Simulate and render to framebuffer
                 this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, (this.flip ? this.fbB : this.fbA)!);
                 this.gl.activeTexture(this.gl.TEXTURE0);
-                this.gl.bindTexture(this.gl.TEXTURE_2D, (this.flip ? this.texA : this.texB)!);
+                this.gl.bindTexture(this.gl.TEXTURE_2D, (this.flip ? this.stateTexA : this.stateTexB)!);
+                // this.gl.activeTexture(this.gl.TEXTURE3);
+                // this.gl.bindTexture(this.gl.TEXTURE_2D, (this.flip ? this.paintTexA : this.paintTexB)!);
                 this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
                 this.steps += 1;
                 if (this.doStep) {
@@ -601,7 +622,7 @@ export class Sim {
         this.gl.uniform4fv(this.drawUniforms.mouse.loc, this.drawUniforms.mouse.val);
         this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, (this.flip ? this.fbB : this.fbA)!);
         this.gl.activeTexture(this.gl.TEXTURE0);
-        this.gl.bindTexture(this.gl.TEXTURE_2D, (this.flip ? this.texA : this.texB)!);
+        this.gl.bindTexture(this.gl.TEXTURE_2D, (this.flip ? this.stateTexA : this.stateTexB)!);
         this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
     
         /* Colormapping */
@@ -611,15 +632,17 @@ export class Sim {
         this.cam.x += this.cam.move.x;
         this.cam.y += this.cam.move.y;
         this.gl.uniform3fv(this.colorUniforms.cam.loc, [this.cam.x, this.cam.y, this.cam.zoom]);
-        this.colorUniforms.mouse.val[0] = this.mouse.x;
-        this.colorUniforms.mouse.val[1] = this.mouse.y;
-        this.colorUniforms.mouse.val[2] = this.pen.state;
-        this.colorUniforms.mouse.val[3] = this.drawUniforms.mouse.val[3];
-        this.gl.uniform4fv(this.colorUniforms.mouse.loc, this.colorUniforms.mouse.val);
+        // this.colorUniforms.mouse.val[0] = this.mouse.x;
+        // this.colorUniforms.mouse.val[1] = this.mouse.y;
+        // this.colorUniforms.mouse.val[2] = this.pen.state;
+        // this.colorUniforms.mouse.val[3] = this.drawUniforms.mouse.val[3];
+        // this.gl.uniform4fv(this.colorUniforms.mouse.loc, this.colorUniforms.mouse.val);
+        this.colorUniforms.renderSeP.val = this.renderStatesElsePaints;
+        this.gl.uniform1ui(this.colorUniforms.renderSeP.loc, this.colorUniforms.renderSeP.val ? 1 : 0);
         //Colormap and render to canvas
         this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
         this.gl.activeTexture(this.gl.TEXTURE0);
-        this.gl.bindTexture(this.gl.TEXTURE_2D, (this.flip ? this.texB : this.texA)!);
+        this.gl.bindTexture(this.gl.TEXTURE_2D, (this.flip ? this.stateTexB : this.stateTexA)!);
         this.gl.activeTexture(this.gl.TEXTURE1);
         this.gl.bindTexture(this.gl.TEXTURE_2D, this.colorMapTex!);
         this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
@@ -693,10 +716,10 @@ export class Sim {
         this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.R8UI, 1024, 1024, 0, this.gl.RED_INTEGER, this.gl.UNSIGNED_BYTE, this.ruleData);
         this.texConfig();
         
-        this.gl.uniform1i(this.simUniforms.states.loc, this.states);
+        this.gl.uniform1i(this.simUniforms.numStates.loc, this.numStates);
         this.gl.uniform1i(this.simUniforms.subindices.loc, this.nSubIndices);
     }
-    set states(states: number) {
+    set numStates(states: number) {
         if (states != this._states) {
             if (states >= 2 && states < 14) {
                 this._states = states;
@@ -710,7 +733,7 @@ export class Sim {
             }
         }
     }
-    get states() {
+    get numStates() {
         return this._states;
     }
     setRule(rule: Array<number> | Uint8Array) {
@@ -719,7 +742,7 @@ export class Sim {
             console.error("invalid rule:", rule);
             return;
         }
-        this.states = this.nStateMap.get(rule.length) || 2;
+        this.numStates = this.nStateMap.get(rule.length) || 2;
         this.ruleData.set(rule);
         this.regenRuleTex();
     }
@@ -745,10 +768,10 @@ export class Sim {
         this.buildBinomial();
         this.simUniforms = {
             size:       {loc: this.gl.getUniformLocation(this.simProgram, "uSize")!},
-            sampler:    {loc: this.gl.getUniformLocation(this.simProgram, "uSampler")!},
+            states:     {loc: this.gl.getUniformLocation(this.simProgram, "uStates")!},
             binomial:   {loc: this.gl.getUniformLocation(this.simProgram, "uBinomial")!},
             rule:       {loc: this.gl.getUniformLocation(this.simProgram, "uRule")!},
-            states:     {loc: this.gl.getUniformLocation(this.simProgram, "uStates")!},
+            numStates:  {loc: this.gl.getUniformLocation(this.simProgram, "uNumStates")!},
             subindices: {loc: this.gl.getUniformLocation(this.simProgram, "uSubIndices")!}
         };
 
@@ -764,7 +787,7 @@ export class Sim {
             0,0,1,1,0,0,0,0,0]);
     
         //Initialize uniforms
-        this.gl.uniform1i(this.simUniforms.sampler.loc, 0);
+        this.gl.uniform1i(this.simUniforms.states.loc, 0);
         this.gl.uniform1i(this.simUniforms.rule.loc, 1);
         this.gl.uniform1i(this.simUniforms.binomial.loc, 2);
     
@@ -789,7 +812,8 @@ export class Sim {
             cam:        {loc: this.gl.getUniformLocation(this.colorProgram, "uCam")},
             screen:     {loc: this.gl.getUniformLocation(this.colorProgram, "uScreen")},
             simSize:    {loc: this.gl.getUniformLocation(this.colorProgram, "uSimSize")},
-            mouse:      {loc: this.gl.getUniformLocation(this.colorProgram, "uMouse"), val: [0, 0, -1, 50]},
+            // mouse:      {loc: this.gl.getUniformLocation(this.colorProgram, "uMouse"), val: [0, 0, -1, 50]},
+            renderSeP:  {loc: this.gl.getUniformLocation(this.colorProgram, "uRenderSeP"), val: 1},
         };
     
         //Vertex position attribute
