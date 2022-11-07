@@ -168,7 +168,7 @@ for (const line of presetsRaw.split("\n")) {
       console.debug("blah");
     },
     fillRandom() {
-      randomizeDataBuffer(this.simulator.states);
+      randomizeDataBuffer(this.simulator.numStates);
       this.simulator.texSetup();
     },
     importRule() {

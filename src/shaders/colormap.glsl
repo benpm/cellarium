@@ -4,13 +4,14 @@
 precision mediump float;
 
 in vec2 vTextureCoord;     // Texture coordinates 0.0 to 1.0
-uniform highp usampler2D uSampler;     // Simulation texture
+uniform highp usampler2D uStates;     // Simulation texture
 uniform sampler2D uColorMap;    // Colors to be used for states
 uniform vec3 uCam;              // Camera: x, y (pixels), zoom
 uniform vec2 uScreen;           // Screen size in pixels
 uniform vec2 uSimSize;          // Size of the simulation texture
-uniform uint uRenderSeP;        // Render States else Paint - truthy switch
+uniform highp int uRenderSeP;        // Render States else Paint - truthy switch
 // uniform vec4 uMouse;            // Mouse: x, y, z=pen state (-1 indicates 'no state'), w=pen size
+
 out vec4 fragColor;
 
 vec4 colorFromState(uint state) {
@@ -20,20 +21,24 @@ vec4 colorFromState(uint state) {
 void main(void) {
     // Grab coordinate into simulation texture
     vec2 coord = (uCam.xy + (vTextureCoord * (uScreen / uCam.z))) / uSimSize;
-    // Get automaton state
-    uint state = texture(uSampler, coord).r;
-    // Reference colormap tex to draw color to screen
-    fragColor = colorFromState(state);
 
-    // // Calculate toroidal distance to mouse
-    // vec2 offset = mod(uCam.xy, vec2(1.0));
-    // float pMouseDist = distance(
-    //     ceil((vTextureCoord * uScreen) / uCam.z + offset),
-    //     ceil((uMouse.xy) / uCam.z + offset)
-    // );
+    if(bool(uRenderSeP)) {
+    // if (false) {
+        // Get automaton state
+        uint state = texture(uStates, coord).a;
+        // Reference colormap tex to draw color to screen
+        fragColor = colorFromState(state);
+    } else {
+        uvec4 here = texture(uStates, coord);
+        vec3 colorComponent = vec3(here.rgb)/255.0;
+        float alphaComponent = 0.1;
+        if (int(here.a) > 0){
+            alphaComponent = 1.0;
+        }
 
-    // // Mouse click adds cells
-    // if (floor(pMouseDist + 1.0) == ceil(uMouse.w)) {
-    //     fragColor = colorFromState(uint(uMouse.z));
-    // }
+        // fragColor = vec4(colorComponent, 0.5);
+        fragColor = vec4(colorComponent, alphaComponent);
+        // fragColor = vec4(vec3(here.rgba)/255.0, 0.1 + (0.9 * float(int(bool(here.a))));
+    }
+
 }

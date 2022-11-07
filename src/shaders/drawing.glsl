@@ -4,13 +4,13 @@
 precision mediump float;
 
 in vec2 vTextureCoord;     // Texture coordinates 0.0 to 1.0
-uniform highp usampler2D uSampler;     // Input states texture
+uniform highp usampler2D uStates;     // Input states texture
 uniform vec2 uSize;             // Size of simulation canvas in pixels
-uniform vec4 uMouse;            // Position of mouse, plus left / right button states
-out uvec3 fragColor;
+uniform vec4 uMouse;            // Mouse: Position, state, radius
+out uvec4 fragColor;
 
 void main(void) {
-    uint state = texture(uSampler, vTextureCoord).r;
+    fragColor = texture(uStates, vTextureCoord);
 
     // Calculate toroidal distance to mouse
     vec2 pixPos = floor(vTextureCoord * uSize);
@@ -24,10 +24,7 @@ void main(void) {
     // Mouse click adds cells
     if (floor(pMouseDist) < uMouse.w) {
         if (uMouse.z > -1.0) {
-            state = uint(uMouse.z);
+            fragColor.a = uint(uMouse.z);
         }
     }
-
-    // Output new state
-    fragColor = uvec3(state);
 }

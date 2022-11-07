@@ -74,24 +74,19 @@ export interface RuleSpec {
 }
 
 //This has to live outside of the class otherwise it's really slow for some reason
-const stateTexDataBuffer = new Uint8Array(4096**2);
-const paintTexDataBuffer = new Uint8Array(4096**2*3);
-
-function randomizePaintTexDataBuffer(){
-    for (let i = 0; i < paintTexDataBuffer.length; i++){
-        paintTexDataBuffer[i] = Math.floor(Math.random());
-    }
-}
-
-function randomizeStateTexDataBuffer(m: number) {
-    for (let i = 0; i < stateTexDataBuffer.length; i++) {
-        stateTexDataBuffer[i] = Math.floor(Math.random() * m);
-    }
-}
+const texDataBuffer = new Uint8Array(4096**2*4);
 
 export function randomizeDataBuffer(m: number) {
-    randomizeStateTexDataBuffer(m);
-    randomizePaintTexDataBuffer();
+    console.time("Randomizing data buffer");
+    for (let i = 0; i < texDataBuffer.length; i+= 4) {
+        texDataBuffer[i+0] = Math.floor(Math.random()*255);
+        texDataBuffer[i+1] = Math.floor(Math.random()*255);
+        texDataBuffer[i+2] = Math.floor(Math.random()*255);
+        texDataBuffer[i+3] = Math.floor(Math.random() * m);
+    }
+    console.timeEnd("Randomizing data buffer")
+
+    console.log(texDataBuffer.slice(0, 4))
 }
 
 export class Sim {
@@ -145,15 +140,13 @@ export class Sim {
     };
     _preset = "game of life";                   // Current rule preset selection
     doStep = false;                             // Indicates that a simulation step should be performed
-    pause = false;                              // Simulation is paused
+    pause = true;                              // Simulation is paused
     stepsPerFrame = 1;                          // Simulation steps per rendered frame
     flip = false;                               // Indicates framebuffer flip
     private fbA?: WebGLFramebuffer;                     // First framebuffer
     private fbB?: WebGLFramebuffer;                     // Second framebuffer
-    private stateTexA?: WebGLTexture;
-    private stateTexB?: WebGLTexture;
-    private paintTexA?: WebGLTexture;
-    private paintTexB?: WebGLTexture;
+    private texA?: WebGLTexture;
+    private texB?: WebGLTexture;
     steps = 0;                                  // Simulation steps so far
     frames = 0;                                 // Rendered frames so far
     lastFPSSample = Date.now();                 // Millisecond timestap of last FPS sample
@@ -179,14 +172,16 @@ export class Sim {
         private canvas: HTMLCanvasElement,
         private presets: Record<string, string>,
         shaders: Record<string, string>) {
-        this.gl = this.canvas.getContext("webgl2")!;
+        this.gl = this.canvas.getContext("webgl2", {
+            premultipliedAlpha: false
+        })!;
         this.canvas.width = window.innerWidth;
         this.canvas.height = window.innerHeight;
         for (let i = 2; i <= 14; i++) {
             this.nStateMap.set(ruleLength(i), i);
         }
         this.webGlSetup(shaders);
-        randomizeDataBuffer(this._states);
+        // randomizeDataBuffer(this._states);
         this.resetSim();
         //Create clipboard node
         if (!document.getElementById("_clipboard")) {
@@ -447,15 +442,14 @@ export class Sim {
     }
     clear() {
         this.flip = false;
-        stateTexDataBuffer.fill(0);
-        paintTexDataBuffer.fill(0);
+        texDataBuffer.fill(0);
     }
     germinate() {
         // Clear with a single spot in the center
         this.clear();
-        const i = (this.simSize * (this.simSize / 2));
-        stateTexDataBuffer[i] = this.pen.state;
-        paintTexDataBuffer[i*3] = 255; // Let's make the starting cell RED
+        const i = (this.simSize * (this.simSize / 2))*3;
+        texDataBuffer[i+3] = this.pen.state;
+        texDataBuffer[i] = 255; // Let's make the starting cell RED
         this.texSetup();
     }
     resetSim() {
@@ -559,24 +553,28 @@ export class Sim {
         //Framebuffer A
         this.fbA = this.fbA || this.gl.createFramebuffer()!;
         this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.fbA);
-        //StateTexture A
-        this.stateTexA = this.stateTexA || this.gl.createTexture()!;
-        this.gl.bindTexture(this.gl.TEXTURE_2D, this.stateTexA);
-        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.R8UI, this.simSize, this.simSize,
-            0, this.gl.RED_INTEGER, this.gl.UNSIGNED_BYTE, stateTexDataBuffer.subarray(0, this.simSize**2));
+        
+        //Texture A
+        this.texA = this.texA || this.gl.createTexture()!;
+        this.gl.bindTexture(this.gl.TEXTURE_2D, this.texA);
+        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA8UI, this.simSize, this.simSize,
+            0, this.gl.RGBA_INTEGER, this.gl.UNSIGNED_BYTE, texDataBuffer.subarray(0, this.simSize**2*4));
         this.texConfig(this.gl.REPEAT);
-        this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.stateTexA, 0);
+        this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.texA, 0);
+        
+        //////////////////////////////////////////////////////////
 
         //Framebuffer B
         this.fbB = this.fbB || this.gl.createFramebuffer()!;
         this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.fbB);
-        //StateTexture B
-        this.stateTexB = this.stateTexB || this.gl.createTexture()!;
-        this.gl.bindTexture(this.gl.TEXTURE_2D, this.stateTexB);
-        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.R8UI, this.simSize, this.simSize,
-            0, this.gl.RED_INTEGER, this.gl.UNSIGNED_BYTE, null);
+
+        //Texture B
+        this.texB = this.texB || this.gl.createTexture()!;
+        this.gl.bindTexture(this.gl.TEXTURE_2D, this.texB);
+        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA8UI, this.simSize, this.simSize,
+            0, this.gl.RGBA_INTEGER, this.gl.UNSIGNED_BYTE, null);
         this.texConfig(this.gl.REPEAT);
-        this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.stateTexB, 0);
+        this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, this.texB, 0);
     
         //Pass new simulation size to shaders
         this.gl.useProgram(this.simProgram!);
@@ -603,9 +601,7 @@ export class Sim {
                 //Simulate and render to framebuffer
                 this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, (this.flip ? this.fbB : this.fbA)!);
                 this.gl.activeTexture(this.gl.TEXTURE0);
-                this.gl.bindTexture(this.gl.TEXTURE_2D, (this.flip ? this.stateTexA : this.stateTexB)!);
-                // this.gl.activeTexture(this.gl.TEXTURE3);
-                // this.gl.bindTexture(this.gl.TEXTURE_2D, (this.flip ? this.paintTexA : this.paintTexB)!);
+                this.gl.bindTexture(this.gl.TEXTURE_2D, (this.flip ? this.texA : this.texB)!);
                 this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
                 this.steps += 1;
                 if (this.doStep) {
@@ -622,7 +618,7 @@ export class Sim {
         this.gl.uniform4fv(this.drawUniforms.mouse.loc, this.drawUniforms.mouse.val);
         this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, (this.flip ? this.fbB : this.fbA)!);
         this.gl.activeTexture(this.gl.TEXTURE0);
-        this.gl.bindTexture(this.gl.TEXTURE_2D, (this.flip ? this.stateTexA : this.stateTexB)!);
+        this.gl.bindTexture(this.gl.TEXTURE_2D, (this.flip ? this.texA : this.texB)!);
         this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
     
         /* Colormapping */
@@ -632,17 +628,12 @@ export class Sim {
         this.cam.x += this.cam.move.x;
         this.cam.y += this.cam.move.y;
         this.gl.uniform3fv(this.colorUniforms.cam.loc, [this.cam.x, this.cam.y, this.cam.zoom]);
-        // this.colorUniforms.mouse.val[0] = this.mouse.x;
-        // this.colorUniforms.mouse.val[1] = this.mouse.y;
-        // this.colorUniforms.mouse.val[2] = this.pen.state;
-        // this.colorUniforms.mouse.val[3] = this.drawUniforms.mouse.val[3];
-        // this.gl.uniform4fv(this.colorUniforms.mouse.loc, this.colorUniforms.mouse.val);
         this.colorUniforms.renderSeP.val = this.renderStatesElsePaints;
-        this.gl.uniform1ui(this.colorUniforms.renderSeP.loc, this.colorUniforms.renderSeP.val ? 1 : 0);
+        this.gl.uniform1i(this.colorUniforms.renderSeP.loc, this.colorUniforms.renderSeP.val ? 1 : 0);
         //Colormap and render to canvas
         this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
         this.gl.activeTexture(this.gl.TEXTURE0);
-        this.gl.bindTexture(this.gl.TEXTURE_2D, (this.flip ? this.stateTexB : this.stateTexA)!);
+        this.gl.bindTexture(this.gl.TEXTURE_2D, (this.flip ? this.texB : this.texA)!);
         this.gl.activeTexture(this.gl.TEXTURE1);
         this.gl.bindTexture(this.gl.TEXTURE_2D, this.colorMapTex!);
         this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
@@ -769,8 +760,8 @@ export class Sim {
         this.simUniforms = {
             size:       {loc: this.gl.getUniformLocation(this.simProgram, "uSize")!},
             states:     {loc: this.gl.getUniformLocation(this.simProgram, "uStates")!},
-            binomial:   {loc: this.gl.getUniformLocation(this.simProgram, "uBinomial")!},
             rule:       {loc: this.gl.getUniformLocation(this.simProgram, "uRule")!},
+            binomial:   {loc: this.gl.getUniformLocation(this.simProgram, "uBinomial")!},
             numStates:  {loc: this.gl.getUniformLocation(this.simProgram, "uNumStates")!},
             subindices: {loc: this.gl.getUniformLocation(this.simProgram, "uSubIndices")!}
         };
@@ -790,6 +781,7 @@ export class Sim {
         this.gl.uniform1i(this.simUniforms.states.loc, 0);
         this.gl.uniform1i(this.simUniforms.rule.loc, 1);
         this.gl.uniform1i(this.simUniforms.binomial.loc, 2);
+
     
         /* --- Colormap Shader Program --- */
         //Build program
@@ -807,7 +799,7 @@ export class Sim {
     
         //Uniforms
         this.colorUniforms = {
-            sampler:    {loc: this.gl.getUniformLocation(this.colorProgram, "uSampler")},
+            states:    {loc: this.gl.getUniformLocation(this.colorProgram, "uStates")},
             colormap:   {loc: this.gl.getUniformLocation(this.colorProgram, "uColorMap")},
             cam:        {loc: this.gl.getUniformLocation(this.colorProgram, "uCam")},
             screen:     {loc: this.gl.getUniformLocation(this.colorProgram, "uScreen")},
@@ -823,7 +815,7 @@ export class Sim {
         this.gl.enableVertexAttribArray(aVertexPosition);
     
         //Set these uniforms once
-        this.gl.uniform1i(this.colorUniforms.sampler.loc, 0);
+        this.gl.uniform1i(this.colorUniforms.states.loc, 0);
         this.gl.uniform1i(this.colorUniforms.colormap.loc, 1);
         this.gl.uniform2fv(this.colorUniforms.screen.loc, [this.canvas.width, this.canvas.height]);
     
@@ -838,9 +830,11 @@ export class Sim {
         //Uniforms
         this.drawUniforms = {
             size:       {loc: this.gl.getUniformLocation(this.drawProgram, "uSize")},
-            sampler:    {loc: this.gl.getUniformLocation(this.drawProgram, "uSampler")},
+            states:    {loc: this.gl.getUniformLocation(this.drawProgram, "uStates")},
             mouse:      {loc: this.gl.getUniformLocation(this.drawProgram, "uMouse"), val: [0, 0, -1, 50]},
         };
+
+        
     
         //Vertex position attribute
         aVertexPosition = this.gl.getAttribLocation(this.drawProgram, "aVertexPosition");
@@ -849,7 +843,7 @@ export class Sim {
         this.gl.enableVertexAttribArray(aVertexPosition);
     
         //Set these uniforms once
-        this.gl.uniform1i(this.drawUniforms.sampler.loc, 0);
+        this.gl.uniform1i(this.drawUniforms.states.loc, 0);
     }
     texConfig(wrap: number = this.gl.CLAMP_TO_EDGE) {
         this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, wrap);
